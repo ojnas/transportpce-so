@@ -242,7 +242,7 @@ public class PowerMgmtImpl implements PowerMgmt {
 
                         BigDecimal powerValue =  null;
                         if (spanLossTx != null &&  spanLossTx.intValue() <= 28 && spanLossTx.intValue() > 0) {
-                            powerValue = BigDecimal.valueOf(Math.min(spanLossTx.doubleValue() - 9, 2));
+                            powerValue = BigDecimal.valueOf(Math.min(spanLossTx.doubleValue() - 12.5, 3));
                             LOG.info("Power Value is {}", powerValue);
                         } else if (spanLossTx.intValue() > 28) {
                             LOG.error(
