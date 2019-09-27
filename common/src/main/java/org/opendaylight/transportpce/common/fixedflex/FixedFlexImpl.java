@@ -15,11 +15,11 @@ public final class FixedFlexImpl implements FixedFlexInterface {
     private double stop;
     private double wavelength;
     // wavelengthSpacing is in GHz
-    float wavelengthSpacing = 50;
-    // beginWavelength is in nm: f or F is appended to treat it explicitly as simple float (and not double float)
-    final float beginWavelength = 1528.77f;
+    double wavelengthSpacing = 100.0;
+    // endFrequency is in THz
+    final double endFrequency = 196.0;
     // java double is double float - d or D is appended to treat it explicitly as double float
-    final double precision = 10000d;
+    final double precision = 100d;
 
     public FixedFlexImpl(Long index, double centreFrequency, double start, double stop, double wavelength) {
         this.index = index;
@@ -38,14 +38,15 @@ public final class FixedFlexImpl implements FixedFlexInterface {
     }
 
     public FixedFlexImpl(long wlIndex) {
-        this.centerFrequency = 196.1 - (wlIndex - 1) * wavelengthSpacing / 1000;
+        this.index = wlIndex;
+        this.centerFrequency = endFrequency - (wlIndex - 1) * wavelengthSpacing / 1000;
+        this.wavelength = (299792458 / this.centerFrequency) / 1000;
         // Truncate the value to the two decimal places
         this.centerFrequency = Math.round(this.centerFrequency * precision) / precision;
         this.start = this.centerFrequency - (wavelengthSpacing / 2) / 1000;
         this.start = Math.round(this.start * precision) / precision;
         this.stop = this.centerFrequency + (wavelengthSpacing / 2) / 1000;
         this.stop = Math.round(this.stop * precision) / precision;
-        this.wavelength = beginWavelength + ((wlIndex - 1) * 0.40);
         this.wavelength = Math.round(this.wavelength * precision) / precision;
     }
 
@@ -55,16 +56,14 @@ public final class FixedFlexImpl implements FixedFlexInterface {
      * @return Returns FixedFlexImp object with the calculated result.
      **/
     public FixedFlexImpl getFixedFlexWaveMapping(long wlIndex) {
-        // In Flex grid  -35 <= n <= 60
-        long mappedWL = 61 - wlIndex;
         FixedFlexImpl fixedFlex = new FixedFlexImpl();
-        fixedFlex.centerFrequency = 193.1 + (50.0 / 1000.0) * mappedWL;
+        fixedFlex.centerFrequency = endFrequency - (wlIndex - 1) * wavelengthSpacing / 1000;
         fixedFlex.centerFrequency = Math.round(fixedFlex.centerFrequency * precision) / precision;
-        fixedFlex.wavelength = beginWavelength + ((wlIndex - 1) * 0.40);
+        fixedFlex.wavelength = (299792458 / fixedFlex.centerFrequency) / 1000;
         fixedFlex.wavelength = Math.round(fixedFlex.wavelength * precision) / precision;
-        fixedFlex.start = 193.1 + (50.0 * mappedWL - 25) / 1000.0;
+        fixedFlex.start = fixedFlex.centerFrequency - (wavelengthSpacing / 2) / 1000;
         fixedFlex.start = Math.round(fixedFlex.start * precision) / precision;
-        fixedFlex.stop = 193.1 + (50.0 * mappedWL + 25) / 1000.0;
+        fixedFlex.stop = fixedFlex.centerFrequency + (wavelengthSpacing / 2) / 1000;
         fixedFlex.stop = Math.round(fixedFlex.stop * precision) / precision;
         fixedFlex.index = wlIndex;
         return fixedFlex;

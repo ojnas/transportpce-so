@@ -168,8 +168,8 @@ public class PceNode {
                 }
                 break;
             case XPONDER :
-                // HARD CODED 96
-                for (long i = 1; i <= 96; i++) {
+                // HARD CODED 40
+                for (long i = 1; i <= 40; i++) {
                     this.availableWLindex.add(i);
                 }
                 break;

@@ -197,7 +197,7 @@ public class OpenRoadmInterface221 {
         NmcCtpBuilder nmcCtpIfBuilder = new NmcCtpBuilder();
 
         nmcCtpIfBuilder.setFrequency(FrequencyTHz.getDefaultInstance(String.valueOf(fixedFlex.getCenterFrequency())));
-        nmcCtpIfBuilder.setWidth(FrequencyGHz.getDefaultInstance("40"));
+        nmcCtpIfBuilder.setWidth(FrequencyGHz.getDefaultInstance("92"));
 
         // Create Interface1 type object required for adding as augmentation
         org.opendaylight.yang.gen.v1.http.org.openroadm.network.media.channel.interfaces.rev181019.Interface1Builder

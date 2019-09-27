@@ -301,7 +301,7 @@ public class OpenRoadmTopology22 {
         // set degree-attributes
         DegreeAttributesBuilder degAttBldr = new DegreeAttributesBuilder()
                 .setDegreeNumber(new Integer(degNb.split("DEG")[1]))
-                .setAvailableWavelengths(create96AvalWaveDegree());
+                .setAvailableWavelengths(create40AvalWaveDegree());
         // Create openroadm-network-topo augmentation to set node type to DEGREE
         Node1Builder ontNode1Bldr = new Node1Builder()
                 .setDegreeAttributes(degAttBldr.build());
@@ -366,7 +366,7 @@ public class OpenRoadmTopology22 {
         // set node-id
         String nodeIdtopo = new StringBuilder().append(nodeId).append("-").append(srgNb).toString();
         // set srg-attributes
-        SrgAttributesBuilder srgAttrBldr = new SrgAttributesBuilder().setAvailableWavelengths(create96AvalWaveSrg());
+        SrgAttributesBuilder srgAttrBldr = new SrgAttributesBuilder().setAvailableWavelengths(create40AvalWaveSrg());
         // Create openroadm-network-topo augmentation to set node type to DEGREE
         Node1Builder ontNode1Bldr = new Node1Builder()
                 .setSrgAttributes(srgAttrBldr.build());
@@ -535,10 +535,10 @@ public class OpenRoadmTopology22 {
         }
     }
 
-    private List<AvailableWavelengths> create96AvalWaveDegree() {
+    private List<AvailableWavelengths> create40AvalWaveDegree() {
         List<AvailableWavelengths> waveList = new ArrayList<>();
 
-        for (int i = 1; i < 97; i++) {
+        for (int i = 1; i <= 40; i++) {
             AvailableWavelengthsBuilder avalBldr = new AvailableWavelengthsBuilder()
                     .setIndex((long) i)
                     .withKey(new AvailableWavelengthsKey((long) i));
@@ -549,13 +549,13 @@ public class OpenRoadmTopology22 {
     }
 
     private List<org.opendaylight.yang.gen.v1.http.org.openroadm.srg.rev181130.srg.node
-            .attributes.AvailableWavelengths> create96AvalWaveSrg() {
+            .attributes.AvailableWavelengths> create40AvalWaveSrg() {
 
         List<org.opendaylight.yang.gen.v1.http.org.openroadm.srg.rev181130.srg.node.attributes
                 .AvailableWavelengths> waveList =
                 new ArrayList<>();
 
-        for (int i = 1; i < 97; i++) {
+        for (int i = 1; i <= 40; i++) {
             org.opendaylight.yang.gen.v1.http.org.openroadm.srg.rev181130.srg.node.attributes
                 .AvailableWavelengthsBuilder avalBldr =
                     new org.opendaylight.yang.gen.v1.http.org.openroadm.srg.rev181130.srg.node.attributes
