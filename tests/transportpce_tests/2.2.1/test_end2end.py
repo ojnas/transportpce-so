@@ -28,7 +28,7 @@ class TransportPCEFulltesting(unittest.TestCase):
     honeynode_process3 = None
     honeynode_process4 = None
     restconf_baseurl = "http://localhost:8181/restconf"
-    WAITING = 20      #nominal value is 300
+    WAITING = 300 #20      #nominal value is 300
 
 #START_IGNORE_XTESTING
 
@@ -485,7 +485,7 @@ class TransportPCEFulltesting(unittest.TestCase):
         self.assertDictContainsSubset(
              {'connection-name': 'SRG1-PP1-TXRX-DEG2-TTP-TXRX-1',
               'opticalControlMode': 'gainLoss',
-              'target-output-power': -3.0},
+              'target-output-power': -6.5},
              res['roadm-connections'][0])
         self.assertDictEqual(
              {'src-if': 'SRG1-PP1-TXRX-nmc-1'},
@@ -508,7 +508,7 @@ class TransportPCEFulltesting(unittest.TestCase):
         self.assertDictContainsSubset(
              {'connection-name': 'SRG1-PP1-TXRX-DEG1-TTP-TXRX-1',
               'opticalControlMode': 'gainLoss',
-              'target-output-power': -3.0},
+              'target-output-power': -6.5},
              res['roadm-connections'][0])
         self.assertDictEqual(
              {'src-if': 'SRG1-PP1-TXRX-nmc-1'},
@@ -528,8 +528,8 @@ class TransportPCEFulltesting(unittest.TestCase):
         liste_tp = res['node'][0]['ietf-network-topology:termination-point']
         for ele in liste_tp:
             if ele['tp-id'] == 'XPDR1-NETWORK1':
-                self.assertEqual({u'frequency': 196.1,
-                                  u'width': 40},
+                self.assertEqual({u'frequency': 196.0,
+                                  u'width': 92},
                                   ele['org-openroadm-network-topology:xpdr-network-attributes']['wavelength'])
             if ele['tp-id'] == 'XPDR1-CLIENT2' or ele['tp-id'] == 'XPDR1-CLIENT1':
                 self.assertNotIn('wavelength', dict.keys(ele['org-openroadm-network-topology:xpdr-client-attributes']))
@@ -549,8 +549,8 @@ class TransportPCEFulltesting(unittest.TestCase):
         liste_tp = res['node'][0]['ietf-network-topology:termination-point']
         for ele in liste_tp:
             if ele['tp-id'] == 'SRG1-PP1-TXRX':
-                self.assertIn({u'index': 1, u'frequency': 196.1,
-                               u'width': 40},
+                self.assertIn({u'index': 1, u'frequency': 196.0,
+                               u'width': 92},
                                ele['org-openroadm-network-topology:pp-attributes']['used-wavelength'])
             if ele['tp-id'] == 'SRG1-PP2-TXRX':
                 self.assertNotIn('used-wavelength', dict.keys(ele))
@@ -568,12 +568,12 @@ class TransportPCEFulltesting(unittest.TestCase):
         liste_tp = res['node'][0]['ietf-network-topology:termination-point']
         for ele in liste_tp:
             if ele['tp-id'] == 'DEG2-CTP-TXRX':
-                self.assertIn({u'index': 1, u'frequency': 196.1,
-                               u'width': 40},
+                self.assertIn({u'index': 1, u'frequency': 196.0,
+                               u'width': 92},
                                ele['org-openroadm-network-topology:ctp-attributes']['used-wavelengths'])
             if ele['tp-id'] == 'DEG2-TTP-TXRX':
-                self.assertIn({u'index': 1, u'frequency': 196.1,
-                               u'width': 40},
+                self.assertIn({u'index': 1, u'frequency': 196.0,
+                               u'width': 92},
                                ele['org-openroadm-network-topology:tx-ttp-attributes']['used-wavelengths'])
         time.sleep(3)
 
@@ -822,12 +822,12 @@ class TransportPCEFulltesting(unittest.TestCase):
         liste_tp = res['node'][0]['ietf-network-topology:termination-point']
         for ele in liste_tp:
             if ele['tp-id'] == 'XPDR1-NETWORK1':
-                self.assertEqual({u'frequency': 196.1,
-                                  u'width': 40},
+                self.assertEqual({u'frequency': 196.0,
+                                  u'width': 92},
                                   ele['org-openroadm-network-topology:xpdr-network-attributes']['wavelength'])
             if ele['tp-id'] == 'XPDR1-NETWORK2':
-                self.assertEqual({u'frequency': 196.05,
-                                  u'width': 40},
+                self.assertEqual({u'frequency': 195.9,
+                                  u'width': 92},
                                   ele['org-openroadm-network-topology:xpdr-network-attributes']['wavelength'])
             if ele['tp-id'] == 'XPDR1-CLIENT1' or ele['tp-id'] == 'XPDR1-CLIENT2':
                 self.assertNotIn('wavelength', dict.keys(ele['org-openroadm-network-topology:xpdr-client-attributes']))
@@ -845,17 +845,17 @@ class TransportPCEFulltesting(unittest.TestCase):
         liste_tp = res['node'][0]['ietf-network-topology:termination-point']
         for ele in liste_tp:
             if ele['tp-id'] == 'SRG1-PP1-TXRX':
-                self.assertIn({u'index': 1, u'frequency': 196.1,
-                               u'width': 40},
+                self.assertIn({u'index': 1, u'frequency': 196.0,
+                               u'width': 92},
                                ele['org-openroadm-network-topology:pp-attributes']['used-wavelength'])
-                self.assertNotIn({u'index': 2, u'frequency': 196.05,
-                                  u'width': 40},
+                self.assertNotIn({u'index': 2, u'frequency': 195.9,
+                                  u'width': 92},
                                   ele['org-openroadm-network-topology:pp-attributes']['used-wavelength'])
             if ele['tp-id'] == 'SRG1-PP2-TXRX':
-                self.assertIn({u'index': 2, u'frequency': 196.05, u'width': 40},
+                self.assertIn({u'index': 2, u'frequency': 195.9, u'width': 92},
                               ele['org-openroadm-network-topology:pp-attributes']['used-wavelength'])
-                self.assertNotIn({u'index': 1, u'frequency': 196.1,
-                                  u'width': 40},
+                self.assertNotIn({u'index': 1, u'frequency': 196.0,
+                                  u'width': 92},
                                   ele['org-openroadm-network-topology:pp-attributes']['used-wavelength'])
             if ele['tp-id'] == 'SRG1-PP3-TXRX':
                 self.assertNotIn('org-openroadm-network-topology:pp-attributes', dict.keys(ele))
@@ -874,16 +874,16 @@ class TransportPCEFulltesting(unittest.TestCase):
         liste_tp = res['node'][0]['ietf-network-topology:termination-point']
         for ele in liste_tp:
             if ele['tp-id'] == 'DEG2-CTP-TXRX':
-                self.assertIn({u'index': 1, u'frequency': 196.1,
-                               u'width': 40},
+                self.assertIn({u'index': 1, u'frequency': 196.0,
+                               u'width': 92},
                                ele['org-openroadm-network-topology:ctp-attributes']['used-wavelengths'])
-                self.assertIn({u'index': 2, u'frequency': 196.05, u'width': 40},
+                self.assertIn({u'index': 2, u'frequency': 195.9, u'width': 92},
                               ele['org-openroadm-network-topology:ctp-attributes']['used-wavelengths'])
             if ele['tp-id'] == 'DEG2-TTP-TXRX':
-                self.assertIn({u'index': 1, u'frequency': 196.1,
-                               u'width': 40},
+                self.assertIn({u'index': 1, u'frequency': 196.0,
+                               u'width': 92},
                                ele['org-openroadm-network-topology:tx-ttp-attributes']['used-wavelengths'])
-                self.assertIn({u'index': 2, u'frequency': 196.05, u'width': 40},
+                self.assertIn({u'index': 2, u'frequency': 195.9, u'width': 92},
                               ele['org-openroadm-network-topology:tx-ttp-attributes']['used-wavelengths'])
         time.sleep(10)
 
@@ -1044,7 +1044,7 @@ class TransportPCEFulltesting(unittest.TestCase):
         res = response.json()
         self.assertIn('Renderer service delete in progress',
             res['output']['configuration-response-common']['response-message'])
-        time.sleep(20)
+        time.sleep(self.WAITING)
 
     def test_31_delete_eth_service2(self):
         url = ("{}/operations/org-openroadm-service:service-delete"
@@ -1070,7 +1070,7 @@ class TransportPCEFulltesting(unittest.TestCase):
         res = response.json()
         self.assertIn('Renderer service delete in progress',
             res['output']['configuration-response-common']['response-message'])
-        time.sleep(20)
+        time.sleep(self.WAITING)
 
     def test_32_check_no_xc_ROADMA(self):
         url = ("{}/config/network-topology:network-topology/topology/topology-netconf/"
@@ -1269,7 +1269,7 @@ class TransportPCEFulltesting(unittest.TestCase):
         self.assertDictContainsSubset(
              {'connection-name': 'SRG1-PP1-TXRX-DEG2-TTP-TXRX-1',
               'opticalControlMode': 'gainLoss',
-              'target-output-power': -3.0},
+              'target-output-power': -6.5},
              res['roadm-connections'][0])
         self.assertDictEqual(
              {'src-if': 'SRG1-PP1-TXRX-nmc-1'},
@@ -1292,7 +1292,7 @@ class TransportPCEFulltesting(unittest.TestCase):
         self.assertDictContainsSubset(
              {'connection-name': 'SRG1-PP1-TXRX-DEG1-TTP-TXRX-1',
               'opticalControlMode': 'gainLoss',
-              'target-output-power': -3.0},
+              'target-output-power': -6.5},
              res['roadm-connections'][0])
         self.assertDictEqual(
              {'src-if': 'SRG1-PP1-TXRX-nmc-1'},
@@ -1437,7 +1437,7 @@ class TransportPCEFulltesting(unittest.TestCase):
         self.assertDictContainsSubset(
              {'connection-name': 'SRG1-PP2-TXRX-DEG2-TTP-TXRX-2',
               'opticalControlMode': 'gainLoss',
-              'target-output-power': -3.0},
+              'target-output-power': -6.5},
              res['roadm-connections'][0])
         self.assertDictEqual(
              {'src-if': 'SRG1-PP2-TXRX-nmc-2'},
@@ -1477,7 +1477,7 @@ class TransportPCEFulltesting(unittest.TestCase):
         res = response.json()
         self.assertIn('Renderer service delete in progress',
             res['output']['configuration-response-common']['response-message'])
-        time.sleep(20)
+        time.sleep(self.WAITING)
 
     def test_45_delete_oc_service2(self):
         url = ("{}/operations/org-openroadm-service:service-delete"
@@ -1503,7 +1503,7 @@ class TransportPCEFulltesting(unittest.TestCase):
         res = response.json()
         self.assertIn('Renderer service delete in progress',
             res['output']['configuration-response-common']['response-message'])
-        time.sleep(20)
+        time.sleep(self.WAITING)
 
     def test_46_get_no_oc_services(self):
         print ("start test")

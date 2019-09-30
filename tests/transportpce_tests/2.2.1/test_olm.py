@@ -590,7 +590,7 @@ class TransportOlmTesting(unittest.TestCase):
         self.assertEqual(response.status_code, requests.codes.ok)
         res = response.json()
         self.assertEqual(-5, res['org-openroadm-optical-channel-interfaces:och']['transmit-power'])
-        self.assertEqual(196.1, res['org-openroadm-optical-channel-interfaces:och']['frequency'])
+        self.assertEqual(196.0, res['org-openroadm-optical-channel-interfaces:och']['frequency'])
 
     def test_21_get_roadmconnection_ROADMA(self):
         url = ("{}/config/network-topology:network-topology/topology/topology-netconf/node/ROADM-A1/yang-ext:mount/"
@@ -602,7 +602,7 @@ class TransportOlmTesting(unittest.TestCase):
         self.assertEqual(response.status_code, requests.codes.ok)
         res = response.json()
         self.assertEqual("gainLoss", res['roadm-connections'][0]['opticalControlMode'])
-        self.assertEqual(2.0, res['roadm-connections'][0]['target-output-power'])
+        self.assertEqual(3.0, res['roadm-connections'][0]['target-output-power'])
 
     def test_22_get_roadmconnection_ROADMC(self):
         url = ("{}/config/network-topology:network-topology/topology/topology-netconf/node/ROADM-C1/yang-ext:mount/"
@@ -663,7 +663,7 @@ class TransportOlmTesting(unittest.TestCase):
         self.assertEqual(response.status_code, requests.codes.ok)
         res = response.json()
         self.assertEqual(-5  , res['org-openroadm-optical-channel-interfaces:och']['transmit-power'])
-        self.assertEqual(196.1, res['org-openroadm-optical-channel-interfaces:och']['frequency'])
+        self.assertEqual(196.0, res['org-openroadm-optical-channel-interfaces:och']['frequency'])
 
     def test_25_get_roadmconnection_ROADMC(self):
         url = ("{}/config/network-topology:network-topology/topology/topology-netconf/node/ROADM-C1/yang-ext:mount/"
@@ -675,7 +675,7 @@ class TransportOlmTesting(unittest.TestCase):
         self.assertEqual(response.status_code, requests.codes.ok)
         res = response.json()
         self.assertEqual("gainLoss", res['roadm-connections'][0]['opticalControlMode'])
-        self.assertEqual(2.0, res['roadm-connections'][0]['target-output-power'])
+        self.assertEqual(3.0, res['roadm-connections'][0]['target-output-power'])
 
     def test_26_service_power_turndown_XPDRA_XPDRC(self):
         url = "{}/operations/transportpce-olm:service-power-turndown".format(self.restconf_baseurl)
