@@ -1,0 +1,10 @@
+#!/bin/bash
+
+/confd/bin/confd
+/confd/bin/confd --stop
+/confd/bin/confd --addloadpath /openroadm/yang-models
+/confd/bin/confd_load -m -l -o /openroadm/init-device/ROADMC-device-init.xml
+/confd/bin/confd_load -C /openroadm/init-device/ROADMC-device-init.xml
+/confd/bin/confd_load -m -l -o /openroadm/init-device/ROADMC-PM-init.xml
+/confd/bin/confd_load -C /openroadm/init-device/ROADMC-PM-init.xml
+/bin/bash
