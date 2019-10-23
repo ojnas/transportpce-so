@@ -81,6 +81,30 @@ class TransportPCEtesting(unittest.TestCase):
             child.wait()
         cls.odl_process.send_signal(signal.SIGINT)
         cls.odl_process.wait()
+        with open('confd1.log', 'w') as f:
+            f.write(cls.confd_container1.logs())
+        with open('confd2.log', 'w') as f:
+            f.write(cls.confd_container2.logs())
+        with open('confd3.log', 'w') as f:
+            f.write(cls.confd_container3.logs())
+        with open('confd4.log', 'w') as f:
+            f.write(cls.confd_container4.logs())
+        bits, stat = cls.confd_container1.get_archive('/confd/var/confd/log/netconf.trace')
+        with open('confd1_trace.tar', 'wb') as f:
+            for chunk in bits:
+                f.write(chunk)
+        bits, stat = cls.confd_container2.get_archive('/confd/var/confd/log/netconf.trace')
+        with open('confd2_trace.tar', 'wb') as f:
+            for chunk in bits:
+                f.write(chunk)
+        bits, stat = cls.confd_container3.get_archive('/confd/var/confd/log/netconf.trace')
+        with open('confd3_trace.tar', 'wb') as f:
+            for chunk in bits:
+                f.write(chunk)
+        bits, stat = cls.confd_container4.get_archive('/confd/var/confd/log/netconf.trace')
+        with open('confd4_trace.tar', 'wb') as f:
+            for chunk in bits:
+                f.write(chunk)
         cls.confd_container1.stop()
         cls.confd_container2.stop()
         cls.confd_container3.stop()

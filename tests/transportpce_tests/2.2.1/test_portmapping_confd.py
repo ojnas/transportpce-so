@@ -65,6 +65,18 @@ class TransportPCEPortMappingTesting(unittest.TestCase):
         cls.odl_process.wait()
         cls.confd_container1.stop()
         cls.confd_container2.stop()
+        with open('confd1.log', 'w') as f:
+            f.write(cls.confd_container1.logs())
+        with open('confd2.log', 'w') as f:
+            f.write(cls.confd_container2.logs())
+        bits, stat = cls.confd_container1.get_archive('/confd/var/confd/log/netconf.trace')
+        with open('confd1_trace.tar', 'wb') as f:
+            for chunk in bits:
+                f.write(chunk)
+        bits, stat = cls.confd_container2.get_archive('/confd/var/confd/log/netconf.trace')
+        with open('confd2_trace.tar', 'wb') as f:
+            for chunk in bits:
+                f.write(chunk)
 
     def setUp(self):
         print ("execution of {}".format(self.id().split(".")[-1]))
