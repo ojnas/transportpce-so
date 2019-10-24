@@ -1258,4 +1258,4 @@ class TransportPCEtesting(unittest.TestCase):
         self.assertEqual(nbLink, 6)
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=2, catchbreak=True)

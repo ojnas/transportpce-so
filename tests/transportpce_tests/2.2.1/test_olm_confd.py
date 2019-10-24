@@ -990,4 +990,4 @@ class TransportOlmTesting(unittest.TestCase):
         time.sleep(10)
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=2, catchbreak=True)
