@@ -63,8 +63,6 @@ class TransportPCEPortMappingTesting(unittest.TestCase):
             child.wait()
         cls.odl_process.send_signal(signal.SIGINT)
         cls.odl_process.wait()
-        cls.confd_container1.stop()
-        cls.confd_container2.stop()
         with open('confd1.log', 'w') as f:
             f.write(cls.confd_container1.logs())
         with open('confd2.log', 'w') as f:
@@ -77,6 +75,8 @@ class TransportPCEPortMappingTesting(unittest.TestCase):
         with open('confd2_trace.tar', 'wb') as f:
             for chunk in bits:
                 f.write(chunk)
+        cls.confd_container1.stop()
+        cls.confd_container2.stop()
 
     def setUp(self):
         print ("execution of {}".format(self.id().split(".")[-1]))
