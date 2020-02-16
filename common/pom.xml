@@ -16,7 +16,7 @@
 
     <groupId>org.opendaylight.transportpce</groupId>
     <artifactId>transportpce-common</artifactId>
-    <version>0.4.3-SNAPSHOT</version>
+    <version>0.4.3</version>
     <packaging>bundle</packaging>
 
     <dependencyManagement>
@@ -24,7 +24,7 @@
             <dependency>
                 <groupId>org.opendaylight.netconf</groupId>
                 <artifactId>netconf-artifacts</artifactId>
-                <version>1.7.2-SNAPSHOT</version>
+                <version>1.7.2</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>

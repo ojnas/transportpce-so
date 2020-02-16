@@ -12,20 +12,20 @@
     <parent>
         <groupId>io.lighty.core</groupId>
         <artifactId>lighty-app-parent</artifactId>
-        <version>12.0.0-SNAPSHOT</version>
+        <version>12.0.0</version>
         <relativePath/>
     </parent>
 
     <groupId>io.lighty.examples.controllers</groupId>
     <artifactId>lighty-transportpce</artifactId>
-    <version>12.0.0-SNAPSHOT</version>
+    <version>12.0.0</version>
     <packaging>jar</packaging>
 
     <properties>
         <application.main.class>io.lighty.controllers.tpce.Main</application.main.class>
         <application.attach.zip>true</application.attach.zip>
         <maven.deploy.skip>true</maven.deploy.skip>
-        <transportpce.version>0.4.3-SNAPSHOT</transportpce.version>
+        <transportpce.version>0.4.3</transportpce.version>
     </properties>
 
     <dependencies>
