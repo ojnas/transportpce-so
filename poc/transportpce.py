@@ -36,7 +36,12 @@ class Controller():
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()["org-openroadm-device"]
     
-    def get_portmapping(self, node_id):
+    def get_portmapping(self):
+        url = f"{self.baseurl}/config/transportpce-portmapping:network"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()["network"]["nodes"]
+    
+    def get_portmapping_node(self, node_id):
         url = f"{self.baseurl}/config/transportpce-portmapping:network/nodes/{node_id}"
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()["nodes"][0]
@@ -56,8 +61,18 @@ class Controller():
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()["service-list"]
         
+    def get_service_path_list(self):
+        url = f"{self.baseurl}/operational/transportpce-servicepath:service-path-list"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()["service-path-list"]
+        
+    def get_service_path(self, service_path_name):
+        url = f"{self.baseurl}/operational/transportpce-servicepath:service-path-list/service-paths/{service_path_name}"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()["service-paths"][0]
+    
     def get_logical_connection_point(self, node_id, circuit_pack_name, port_name):
-        mapping = self.get_portmapping(node_id)["mapping"]
+        mapping = self.get_portmapping_node(node_id)["mapping"]
         return next(m["logical-connection-point"] for m in mapping
                     if m["supporting-circuit-pack-name"] == circuit_pack_name and m["supporting-port"] == port_name)
                     
