@@ -59,12 +59,12 @@ class Controller():
     def get_service_list(self):
         url = f"{self.baseurl}/operational/org-openroadm-service:service-list"
         response = requests.get(url, headers=self.headers, auth=self.auth)
-        return response.json()["service-list"]
+        return response.json().get("service-list")
         
     def get_service_path_list(self):
         url = f"{self.baseurl}/operational/transportpce-servicepath:service-path-list"
         response = requests.get(url, headers=self.headers, auth=self.auth)
-        return response.json()["service-path-list"]
+        return response.json().get("service-path-list")
         
     def get_service_path(self, service_path_name):
         url = f"{self.baseurl}/operational/transportpce-servicepath:service-path-list/service-paths/{service_path_name}"
