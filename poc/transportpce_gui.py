@@ -86,12 +86,12 @@ app.layout = html.Div([
     html.Div(
         dcc.Dropdown(
             id='service-path-name',
-            placeholder="Update topology and select service path to show"
+            placeholder="Show service path"
         ),
     style={'width': '80%', 'display': 'inline-block'}),
     
     html.Div([
-        html.Button('Update service list', id='service-update-button')
+        html.Button('Update topology and services', id='update-button')
     ]),
     
     html.Div([
@@ -104,19 +104,29 @@ app.layout = html.Div([
 
 @app.callback(
     [Output('topology', 'figure'),
-    Output('xpdr-1', 'value'),
-    Output('srg-1', 'value'),
+    Output('service-path-name', 'options'),
+    Output('xpdr-1', 'value'), Output('xpdr-pp-1', 'value'),
+    Output('xpdr-2', 'value'), Output('xpdr-pp-2', 'value'),
+    Output('srg-1', 'value'), Output('srg-pp-1', 'value'),
+    Output('srg-2', 'value'), Output('srg-pp-2', 'value'),
     Output('wl', 'value')],
-    [Input('service-path-name', 'value')])
-def service_path_update_topology(service_path_name):
+    [Input('update-button', 'n_clicks'),
+    Input('service-path-name', 'value')])
+def update_graph_services(n_clicks, service_path_name):
     topology = tpce.get_topology()
     G = tg.graph_from_topology(topology)
     fig = tg.figure_from_graph(G, port_mapping)
+    service_path_list = tpce.get_service_path_list()
+    values = tuple([None] * 9)
+    if service_path_list is None:
+        return (fig, [], *values)
+    options = [{'label': sp["service-path-name"], 'value': sp["service-path-name"]} for sp in service_path_list["service-paths"]]
     if service_path_name is not None:
         sp = tpce.get_service_path(service_path_name)
         path_trace = tg.trace_from_service_path(sp, G)
         fig.add_trace(path_trace)
-    return fig, None, None, None
+    
+    return (fig, options, *values)
 
 @app.callback(
     Output('xpdr-2', 'options'),
@@ -181,20 +191,11 @@ def set_srg_pp_2_options(srg_2):
     return [{'label': pp, 'value': pp} for pp in pps]
 
 @app.callback(
-    Output('service-path-name', 'options'),
-    [Input('service-update-button', 'n_clicks')])
-def update_service_list(n_clicks):
-    sps = tpce.get_service_path_list()
-    options = [{'label': 'Clear paths', 'value': None}]
-    if sps is not None:
-        options.extend([{'label': sp["service-path-name"], 'value': sp["service-path-name"]} for sp in sps["service-paths"]])
-    return options
-    
-@app.callback(
     Output('output-state', 'children'),
     [Input('create-service', 'n_clicks')],
     [State('xpdr-1', 'value'), State('xpdr-pp-1', 'value'), State('srg-1', 'value'), State('srg-pp-1', 'value'),
-     State('xpdr-2', 'value'), State('xpdr-pp-2', 'value'), State('srg-2', 'value'), State('srg-pp-2', 'value'), State('wl', 'value')])
+     State('xpdr-2', 'value'), State('xpdr-pp-2', 'value'), State('srg-2', 'value'), State('srg-pp-2', 'value'),
+     State('wl', 'value')])
 def create_service(n_clicks, xpdr_1, xpdr_pp_1, srg_1, srg_pp_1, xpdr_2, xpdr_pp_2, srg_2, srg_pp_2, wl):
     if n_clicks is None:
         raise PreventUpdate
