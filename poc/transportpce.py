@@ -142,6 +142,37 @@ class Controller():
         url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link_id_2}"
         requests.delete(url, headers=self.headers, auth=self.auth)
     
+    # delete add- and drop-links not in connection-map
+    def get_connection_map_delete_links(self, node_id):
+        connection_map = self.get_operational(node_id).get("connection-map")
+        if connection_map is None:
+            return
+ 
+        mapping = {}
+        for m in self.get_portmapping_node(node_id)["mapping"]:
+            mapping[m["supporting-circuit-pack-name"]] = node_id + "-" + m["logical-connection-point"].split("-")[0]
+        
+        connection_map_simple = []
+        for cm in connection_map:
+            source = mapping[cm["source"]["circuit-pack-name"]]
+            for destination in set([mapping[d["circuit-pack-name"]] for d in cm["destination"]]):
+                connection_map_simple.append((source, destination))             
+        connection_map_simple = set(connection_map_simple)
+        
+        topology = self.get_topology()
+        supporting_node = {n["node-id"] : n["supporting-node"][0]["node-ref"] for n in topology["node"]}
+        for link in topology["ietf-network-topology:link"]:
+            source_node = link["source"]["source-node"]
+            if (link["org-openroadm-common-network:link-type"] not in ("ADD-LINK", "DROP-LINK") or
+                    supporting_node[source_node] != node_id):
+                continue        
+            dest_node = link["destination"]["dest-node"]
+            if (source_node, dest_node) in connection_map_simple:
+                continue
+            link_id = link["link-id"]
+            url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link_id}"
+            requests.delete(url, headers=self.headers, auth=self.auth)
+    
     # some functions based on RPCs defined by TransportPCE API:
     def link_xpdr_roadm(self, xpdr_node_id, xpdr_logical_connection_point, roadm_node_id, srg_logical_connection_point):
         x = xpdr_logical_connection_point.split("-")
