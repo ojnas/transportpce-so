@@ -79,7 +79,8 @@ app.layout = html.Div([
         
         html.Div([
             html.Button('Create service', id='create-service'),
-            html.Div(id='output-state')
+            html.Div(id='create-response'),
+            html.Div(id='clear-response')
         ])
     ]),
 
@@ -96,7 +97,7 @@ app.layout = html.Div([
     
     html.Div([
         dcc.Graph(
-            style={'height': 1200},
+            style={'height': 1000},
             id='topology'
         )
     ])
@@ -109,7 +110,7 @@ app.layout = html.Div([
     Output('xpdr-2', 'value'), Output('xpdr-pp-2', 'value'),
     Output('srg-1', 'value'), Output('srg-pp-1', 'value'),
     Output('srg-2', 'value'), Output('srg-pp-2', 'value'),
-    Output('wl', 'value')],
+    Output('wl', 'value'), Output('create-response', 'children')],
     [Input('update-button', 'n_clicks'),
     Input('service-path-name', 'value')])
 def update_graph_services(n_clicks, service_path_name):
@@ -119,14 +120,14 @@ def update_graph_services(n_clicks, service_path_name):
     service_path_list = tpce.get_service_path_list()
     values = tuple([None] * 9)
     if service_path_list is None:
-        return (fig, [], *values)
+        return (fig, [], *values,  html.Div(""))
     options = [{'label': sp["service-path-name"], 'value': sp["service-path-name"]} for sp in service_path_list["service-paths"]]
     if service_path_name is not None:
         sp = tpce.get_service_path(service_path_name)
         path_trace = tg.trace_from_service_path(sp, G)
         fig.add_trace(path_trace)
     
-    return (fig, options, *values)
+    return (fig, options, *values, html.Div(""))
 
 @app.callback(
     Output('xpdr-2', 'options'),
@@ -191,7 +192,7 @@ def set_srg_pp_2_options(srg_2):
     return [{'label': pp, 'value': pp} for pp in pps]
 
 @app.callback(
-    Output('output-state', 'children'),
+    Output('clear-response', 'children'),
     [Input('create-service', 'n_clicks')],
     [State('xpdr-1', 'value'), State('xpdr-pp-1', 'value'), State('srg-1', 'value'), State('srg-pp-1', 'value'),
      State('xpdr-2', 'value'), State('xpdr-pp-2', 'value'), State('srg-2', 'value'), State('srg-pp-2', 'value'),
@@ -201,9 +202,9 @@ def create_service(n_clicks, xpdr_1, xpdr_pp_1, srg_1, srg_pp_1, xpdr_2, xpdr_pp
         raise PreventUpdate
     else:
         if not all([srg_1, srg_pp_1, srg_2, srg_pp_2]):
-            return "You must select two SRGs with corresponding ports"
+            return html.Div("You must select two SRGs with corresponding ports", id="create-response")
         if xpdr_1 is not None and not all([xpdr_pp_1, xpdr_2, xpdr_pp_2]):
-            return "You must select two transponders with corresponding ports"
+            return html.Div("You must select two transponders with corresponding ports", id="create-response")
         roadm_1 = G.nodes[srg_1]["node_info"]["supporting-node"][0]["node-ref"]
         roadm_2 = G.nodes[srg_2]["node_info"]["supporting-node"][0]["node-ref"]
         if not wl: wl = None
@@ -224,7 +225,7 @@ def create_service(n_clicks, xpdr_1, xpdr_pp_1, srg_1, srg_pp_1, xpdr_2, xpdr_pp
             node_1.update({"xpdr_node_id": xpdr_node_1, "xpdr_logical_connection_point": xpdr_pp_1})
             node_2.update({"xpdr_node_id": xpdr_node_2, "xpdr_logical_connection_point": xpdr_pp_2})
             tpce.provision_xpdr_service(node_1, node_2, wl)
-        return "Service creation requested ..."
+        return html.Div("Service creation requested ...", id="create-response")
             
 if __name__ == '__main__':
     app.run_server()

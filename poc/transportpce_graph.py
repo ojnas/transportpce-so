@@ -23,7 +23,13 @@ def graph_from_topology(topology):
         G.add_node(node["node-id"], node_info = node)
 
     for link in topology["ietf-network-topology:link"]:
-        weight = link.get("org-openroadm-network-topology:OMS-attributes", {}).get("span", {}).get("link-concatenation", [{}])[0].get("SRLG-length", 1000) / 1000
+        if link["org-openroadm-common-network:link-type"] == "ROADM-TO-ROADM":          
+            length = link.get("org-openroadm-network-topology:OMS-attributes", {}).get("span", {}).get("link-concatenation", [{}])[0].get("SRLG-length")
+            weight = length / 1000 if length is not None else 10
+        elif link["org-openroadm-common-network:link-type"] == "EXPRESS-LINK":
+            weight = 1.5
+        else:
+            weight = 1
         G.add_edge(link["source"]["source-node"], link["destination"]["dest-node"], link_info = link, weight = weight)
 
     pos = nx.kamada_kawai_layout(G)
@@ -97,7 +103,7 @@ def figure_from_graph(G, port_mapping = None):
                                     marker=dict(color="#0d0887"), hovertext=node_hovertext, hoverinfo="text", mode="markers")
 
     return go.Figure(data=[edge_trace, edge_hover_trace, node_hover_trace],
-                    layout=go.Layout(showlegend=False, annotations = node_annotations,
+                    layout=go.Layout(showlegend=False, annotations = node_annotations, margin=dict(l=25, r=25, t=25, b=25),
                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
 
@@ -124,8 +130,8 @@ if __name__ == '__main__':
     port_mapping = tpce.get_portmapping()
     G = graph_from_topology(topology)
     fig = figure_from_graph(G, port_mapping)
-    sp = tpce.get_service_path_list()["service-paths"][0]
-    path_trace = trace_from_service_path(sp, G)
-    fig.add_trace(path_trace)
+    #sp = tpce.get_service_path_list()["service-paths"][0]
+    #path_trace = trace_from_service_path(sp, G)
+    #fig.add_trace(path_trace)
     fig.show()
     
