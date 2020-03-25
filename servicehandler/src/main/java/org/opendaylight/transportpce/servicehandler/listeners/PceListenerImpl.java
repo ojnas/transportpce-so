@@ -105,6 +105,7 @@ public class PceListenerImpl implements TransportpcePceListener {
                                         ModelMappingUtils.createServiceImplementationRequest(input, pathDescription);
                                 LOG.info("Sending serviceImplementation request : {}", serviceImplementationRequest);
                                 this.rendererServiceOperations.serviceImplementation(serviceImplementationRequest);
+                                setInput(null);
                             } else {
                                 LOG.warn("service-feasibility-check RPC ");
                             }
