@@ -47,7 +47,7 @@ app.layout = html.Div([
                 placeholder="Select SRG 1 port"
             )
         ],
-        style={'width': '30%', 'display': 'inline-block'}),
+        style={'width': '50%', 'display': 'inline-block'}),
 
         html.Div([
             dcc.Dropdown(
@@ -67,7 +67,7 @@ app.layout = html.Div([
                 placeholder="Select SRG 2 port"
             )
         ],
-        style={'width': '30%', 'display': 'inline-block'}),
+        style={'width': '50%', 'display': 'inline-block'}),
         
         html.Div(
             dcc.Dropdown(
@@ -75,7 +75,7 @@ app.layout = html.Div([
                 options = [{'label': "auto", 'value': 0}] + [{'label': f"Ch: {n}", 'value': n} for n in range(1,41)],
                 placeholder="Select wavelength channel"
             ),
-        style={'width': '30%'}),
+        style={'width': '50%'}),
     ]),
     
     html.Div([
@@ -90,34 +90,32 @@ app.layout = html.Div([
                             {'label': 'Service Creation', 'value': False},
                             {'label': 'Path Computation', 'value': True}
                         ],
-                        value=False),
+                        value=False,
+                        labelStyle={'display': 'inline-block'}),
             style={'display': 'inline-block'})],
-        style={'width': '30%', 'display': 'inline-block'}),
-
-        html.Div(id='create-response',
-        style={'display': 'inline-block'}),    
+        style={'display': 'inline-block'}),
+        
+        html.Div(
+            html.Button('Update topology and services', id='update-button'),
+        style={'display': 'inline-block', 'float': 'right'}),
+    ],
+    style={'width': '50%', 'display': 'inline-block'}),
+    
+    html.Div(id='create-response',
+    style={'display':'inline-block'}),
             
-        html.Div(id='clear-response',
-        style={'display': 'inline-block'})
-    ]),
+    html.Div(id='clear-response',
+    style={'width': '50%', 'display': 'inline-block', 'text-align': 'center'}),
 
-    html.Div(
-        dcc.Dropdown(
-            id='service-path-name',
-            placeholder="Show service path"
-        ),
-    style={'width': '80%', 'display': 'inline-block'}),
-    
-    html.Div([
-        html.Button('Update topology and services', id='update-button')
-    ]),
-    
-    html.Div([
-        dcc.Graph(
-            style={'height': 1000},
-            id='topology'
-        )
-    ])
+    dcc.Dropdown(
+        id='service-path-name',
+        placeholder="Show service path"
+    ),
+
+    dcc.Graph(
+        style={'height': 1000},
+        id='topology'
+    )
 ])
 
 @app.callback(
@@ -245,7 +243,7 @@ def create_service(n_clicks, xpdr_1, xpdr_pp_1, srg_1, srg_pp_1, xpdr_2, xpdr_pp
         
         message = response["configuration-response-common"]["response-message"]
         if message == "Path is calculated":
-            message = ("Path available, Use wavelength ch: " +
+            message = ("Path Available, Use Wavelength Ch: " +
                         str(response["response-parameters"]["path-description"]["aToZ-direction"]["aToZ-wavelength-number"]))
         elif message == "PCE calculation in progress":
             message = "Service creation requested ..."
