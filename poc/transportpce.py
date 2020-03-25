@@ -218,6 +218,26 @@ class Controller():
         response = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
         return response.json()["output"]["spans"]
         
+    def request_path_computation(self, node_id_1, node_id_2, request_id = "default_rid", service_name = "default_name"):
+        url = f"{self.baseurl}/operations/transportpce-pce:path-computation-request"
+        data = {"input": {
+                    "service-name": service_name,
+                    "resource-reserve": "true",
+                    "pce-metric": "hop-count",
+                    "service-handler-header": {
+                        "request-id": request_id
+                    },
+                    "service-a-end": {"node-id": node_id_1,
+                                    "service-rate": "0",
+                                    "service-format": "OC",
+                                    "clli": "clli_1"},
+                    "service-z-end": {"node-id": node_id_2,
+                                    "service-rate": "0",
+                                    "service-format": "OC",
+                                    "clli": "clli_2"}}}
+        response = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
+        return response.json()["output"]
+    
     # measure spanloss for all ROADM-to-ROADM links and update OMS information in topology based on results:
     def measure_and_add_oms_spanloss(self):
         spans = self.measure_spanloss()
@@ -259,7 +279,8 @@ class Controller():
                     }
                 }
         }
-        requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
+        response = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
+        return response.json()["output"]
         
     # Create service between two XPDRs after linking XPDR ports with ROADM SRG ports and optionally specifying wavelength:
     def provision_xpdr_service(self, node_1, node_2, wl_index = None):
@@ -271,6 +292,7 @@ class Controller():
         roadm_node_id_2 = node_2["roadm_node_id"]
         srg_lcp_1 = node_1["srg_logical_connection_point"]
         srg_lcp_2 = node_2["srg_logical_connection_point"]
+        if isinstance(wl_index, int) : wl_index = [wl_index]
         
         self.link_xpdr_roadm(xpdr_node_id_1, xpdr_lcp_1, roadm_node_id_1, srg_lcp_1)
         self.link_xpdr_roadm(xpdr_node_id_2, xpdr_lcp_2, roadm_node_id_2, srg_lcp_2)
@@ -283,8 +305,8 @@ class Controller():
             srg_id_2 = roadm_node_id_2 + "-" + srg_lcp_2.split("-")[0]
             available_wavelengths_1 = self.get_srg_wavelengths(srg_id_1)
             available_wavelengths_2 = self.get_srg_wavelengths(srg_id_2)
-            self.set_srg_wavelengths(srg_id_1, [wl_index])
-            self.set_srg_wavelengths(srg_id_2, [wl_index])
+            self.set_srg_wavelengths(srg_id_1, [w for w in wl_index if w in available_wavelengths_1])
+            self.set_srg_wavelengths(srg_id_2, [w for w in wl_index if w in available_wavelengths_2])
             service_name += f"_ch{wl_index}"
 
         self.create_service(xpdr_node_id_1, xpdr_node_id_2, service_name = service_name)
@@ -293,14 +315,15 @@ class Controller():
             self.set_srg_wavelengths(srg_id_1, available_wavelengths_1)
             self.set_srg_wavelengths(srg_id_2, available_wavelengths_2)       
     
-    # Create service between two ROADM SRG ports and optionally specify wavelength:
-    def provision_roadm_service(self, node_1, node_2, wl_index = None):
+    # Create service (or ronly equest path computation) between two ROADM SRG ports and optionally specify wavelength:
+    def provision_roadm_service(self, node_1, node_2, wl_index = None, path_computation_only = False):
         roadm_node_id_1 = node_1["roadm_node_id"]
         roadm_node_id_2 = node_2["roadm_node_id"]
         srg_lcp_1 = node_1["srg_logical_connection_point"]
         srg_lcp_2 = node_2["srg_logical_connection_point"]
         srg_id_1 = roadm_node_id_1 + "-" + srg_lcp_1.split("-")[0]
         srg_id_2 = roadm_node_id_2 + "-" + srg_lcp_2.split("-")[0]
+        if isinstance(wl_index, int) : wl_index = [wl_index]
         
         exclude_srgs = [n["node-id"] for n in self.get_topology()["node"] if
                             n["org-openroadm-common-network:node-type"] == "SRG" and
@@ -334,11 +357,14 @@ class Controller():
         if wl_index is not None:
             available_wavelengths_1 = self.get_srg_wavelengths(srg_id_1)
             available_wavelengths_2 = self.get_srg_wavelengths(srg_id_2)
-            self.set_srg_wavelengths(srg_id_1, [wl_index])
-            self.set_srg_wavelengths(srg_id_2, [wl_index])
+            self.set_srg_wavelengths(srg_id_1, [w for w in wl_index if w in available_wavelengths_1])
+            self.set_srg_wavelengths(srg_id_2, [w for w in wl_index if w in available_wavelengths_2])
             service_name += f"_ch{wl_index}"
 
-        self.create_service(roadm_node_id_1, roadm_node_id_2, service_name = service_name)
+        if path_computation_only:
+            response = self.request_path_computation(roadm_node_id_1, roadm_node_id_2)
+        else:
+            response = self.create_service(roadm_node_id_1, roadm_node_id_2, service_name = service_name)
         
         for srg_id, wavelengths in zip(exclude_srgs, exclude_srgs_wavelengths):
             self.set_srg_wavelengths(srg_id, wavelengths)
@@ -352,6 +378,8 @@ class Controller():
         if wl_index is not None:
             self.set_srg_wavelengths(srg_id_1, available_wavelengths_1)
             self.set_srg_wavelengths(srg_id_2, available_wavelengths_2)
+            
+        return response
     
     # Experimental, not really working:
     def provision_roadm_service_2_stage(self, node_id_1, node_id_2, request_id = "default_rid", service_name = "default_name"):

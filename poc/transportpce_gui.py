@@ -76,12 +76,29 @@ app.layout = html.Div([
                 placeholder="Select wavelength channel"
             ),
         style={'width': '30%'}),
-        
+    ]),
+    
+    html.Div([
         html.Div([
-            html.Button('Create service', id='create-service'),
-            html.Div(id='create-response'),
-            html.Div(id='clear-response')
-        ])
+            html.Div(
+                html.Button('Request', id='request-button'),
+            style={'display': 'inline-block'}),
+            
+            html.Div(dcc.RadioItems(
+                        id='path-computation-only',
+                        options=[
+                            {'label': 'Service Creation', 'value': False},
+                            {'label': 'Path Computation', 'value': True}
+                        ],
+                        value=False),
+            style={'display': 'inline-block'})],
+        style={'width': '30%', 'display': 'inline-block'}),
+
+        html.Div(id='create-response',
+        style={'display': 'inline-block'}),    
+            
+        html.Div(id='clear-response',
+        style={'display': 'inline-block'})
     ]),
 
     html.Div(
@@ -193,11 +210,11 @@ def set_srg_pp_2_options(srg_2):
 
 @app.callback(
     Output('clear-response', 'children'),
-    [Input('create-service', 'n_clicks')],
+    [Input('request-button', 'n_clicks')],
     [State('xpdr-1', 'value'), State('xpdr-pp-1', 'value'), State('srg-1', 'value'), State('srg-pp-1', 'value'),
      State('xpdr-2', 'value'), State('xpdr-pp-2', 'value'), State('srg-2', 'value'), State('srg-pp-2', 'value'),
-     State('wl', 'value')])
-def create_service(n_clicks, xpdr_1, xpdr_pp_1, srg_1, srg_pp_1, xpdr_2, xpdr_pp_2, srg_2, srg_pp_2, wl):
+     State('wl', 'value'), State('path-computation-only', 'value')])
+def create_service(n_clicks, xpdr_1, xpdr_pp_1, srg_1, srg_pp_1, xpdr_2, xpdr_pp_2, srg_2, srg_pp_2, wl, path_computation_only):
     if n_clicks is None:
         raise PreventUpdate
     else:
@@ -216,16 +233,24 @@ def create_service(n_clicks, xpdr_1, xpdr_pp_1, srg_1, srg_pp_1, xpdr_2, xpdr_pp
             "roadm_node_id": roadm_2,
             "srg_logical_connection_point": srg_pp_2
         }
-        
-        if xpdr_1 is None:
-            tpce.provision_roadm_service(node_1, node_2, wl)
+
+        if xpdr_1 is None or path_computation_only:
+            response = tpce.provision_roadm_service(node_1, node_2, wl, path_computation_only)
         else:
             xpdr_node_1 = G.nodes[xpdr_1]["node_info"]["supporting-node"][0]["node-ref"]
             xpdr_node_2 = G.nodes[xpdr_2]["node_info"]["supporting-node"][0]["node-ref"]
             node_1.update({"xpdr_node_id": xpdr_node_1, "xpdr_logical_connection_point": xpdr_pp_1})
             node_2.update({"xpdr_node_id": xpdr_node_2, "xpdr_logical_connection_point": xpdr_pp_2})
-            tpce.provision_xpdr_service(node_1, node_2, wl)
-        return html.Div("Service creation requested ...", id="create-response")
+            response = tpce.provision_xpdr_service(node_1, node_2, wl)
+        
+        message = response["configuration-response-common"]["response-message"]
+        if message == "Path is calculated":
+            message = ("Path available, Use wavelength ch: " +
+                        str(response["response-parameters"]["path-description"]["aToZ-direction"]["aToZ-wavelength-number"]))
+        elif message == "PCE calculation in progress":
+            message = "Service creation requested ..."
+        
+        return html.Div(message, id="create-response")
             
 if __name__ == '__main__':
     app.run_server()
