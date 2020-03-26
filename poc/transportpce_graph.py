@@ -107,9 +107,9 @@ def figure_from_graph(G, port_mapping = None):
                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
 
-def trace_from_service_path(service_path, G):
+def trace_from_service_path(service_path_atoz, G):
     
-    path_nodes = [n for n in service_path["path-description"]["aToZ-direction"]["aToZ"] if "node-id" in n["resource"]]
+    path_nodes = [n for n in service_path_atoz if "node-id" in n["resource"]]
     path_nodes.sort(key = lambda x: int(x["id"]))
     
     path_x = []
@@ -130,8 +130,5 @@ if __name__ == '__main__':
     port_mapping = tpce.get_portmapping()
     G = graph_from_topology(topology)
     fig = figure_from_graph(G, port_mapping)
-    #sp = tpce.get_service_path_list()["service-paths"][0]
-    #path_trace = trace_from_service_path(sp, G)
-    #fig.add_trace(path_trace)
     fig.show()
     

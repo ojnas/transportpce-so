@@ -115,34 +115,55 @@ app.layout = html.Div([
     dcc.Graph(
         style={'height': 1000},
         id='topology'
-    )
+    ),
+    
+    dcc.Store(id='computed-path')
 ])
 
 @app.callback(
     [Output('topology', 'figure'),
-    Output('service-path-name', 'options'),
-    Output('xpdr-1', 'value'), Output('xpdr-pp-1', 'value'),
+    Output('service-path-name', 'options')],
+    [Input('update-button', 'n_clicks'),
+    Input('service-path-name', 'value'),
+    Input('computed-path', 'data')])
+def update_graph_services(n_clicks, service_path_name, computed_path):
+    topology = tpce.get_topology()
+    G = tg.graph_from_topology(topology)
+    fig = tg.figure_from_graph(G, port_mapping)
+    
+    trig = dash.callback_context.triggered[0]
+    if trig["prop_id"] ==  "computed-path.data" and trig["value"] is not None:
+        path_trace = tg.trace_from_service_path(computed_path, G)
+        fig.add_trace(path_trace)
+        return fig, dash.no_update
+    
+    service_path_list = tpce.get_service_path_list()
+    
+    if service_path_list is None:
+        return fig, []
+
+    options = [{'label': sp["service-path-name"], 'value': sp["service-path-name"]} for sp in service_path_list["service-paths"]]
+    
+    if service_path_name is not None:
+        sp = tpce.get_service_path(service_path_name)
+        path_trace = tg.trace_from_service_path(sp["path-description"]["aToZ-direction"]["aToZ"], G)
+        fig.add_trace(path_trace)
+    
+    return fig, options
+
+@app.callback(
+    [Output('xpdr-1', 'value'), Output('xpdr-pp-1', 'value'),
     Output('xpdr-2', 'value'), Output('xpdr-pp-2', 'value'),
     Output('srg-1', 'value'), Output('srg-pp-1', 'value'),
     Output('srg-2', 'value'), Output('srg-pp-2', 'value'),
     Output('wl', 'value'), Output('create-response', 'children')],
-    [Input('update-button', 'n_clicks'),
-    Input('service-path-name', 'value')])
-def update_graph_services(n_clicks, service_path_name):
-    topology = tpce.get_topology()
-    G = tg.graph_from_topology(topology)
-    fig = tg.figure_from_graph(G, port_mapping)
-    service_path_list = tpce.get_service_path_list()
-    values = tuple([None] * 9)
-    if service_path_list is None:
-        return (fig, [], *values,  html.Div(""))
-    options = [{'label': sp["service-path-name"], 'value': sp["service-path-name"]} for sp in service_path_list["service-paths"]]
-    if service_path_name is not None:
-        sp = tpce.get_service_path(service_path_name)
-        path_trace = tg.trace_from_service_path(sp, G)
-        fig.add_trace(path_trace)
+    [Input('update-button', 'n_clicks')])
+def clear_values(n_clicks):
+    if n_clicks is None:
+        raise PreventUpdate
     
-    return (fig, options, *values, html.Div(""))
+    outputs = [None] * 9
+    return (*outputs, html.Div(""))
 
 @app.callback(
     Output('xpdr-2', 'options'),
@@ -207,7 +228,8 @@ def set_srg_pp_2_options(srg_2):
     return [{'label': pp, 'value': pp} for pp in pps]
 
 @app.callback(
-    Output('clear-response', 'children'),
+    [Output('clear-response', 'children'),
+     Output('computed-path', 'data')],
     [Input('request-button', 'n_clicks')],
     [State('xpdr-1', 'value'), State('xpdr-pp-1', 'value'), State('srg-1', 'value'), State('srg-pp-1', 'value'),
      State('xpdr-2', 'value'), State('xpdr-pp-2', 'value'), State('srg-2', 'value'), State('srg-pp-2', 'value'),
@@ -215,40 +237,42 @@ def set_srg_pp_2_options(srg_2):
 def create_service(n_clicks, xpdr_1, xpdr_pp_1, srg_1, srg_pp_1, xpdr_2, xpdr_pp_2, srg_2, srg_pp_2, wl, path_computation_only):
     if n_clicks is None:
         raise PreventUpdate
-    else:
-        if not all([srg_1, srg_pp_1, srg_2, srg_pp_2]):
-            return html.Div("You must select two SRGs with corresponding ports", id="create-response")
-        if xpdr_1 is not None and not all([xpdr_pp_1, xpdr_2, xpdr_pp_2]):
-            return html.Div("You must select two transponders with corresponding ports", id="create-response")
-        roadm_1 = G.nodes[srg_1]["node_info"]["supporting-node"][0]["node-ref"]
-        roadm_2 = G.nodes[srg_2]["node_info"]["supporting-node"][0]["node-ref"]
-        if not wl: wl = None
-        node_1 = {
-        "roadm_node_id": roadm_1,
-        "srg_logical_connection_point": srg_pp_1
-        }
-        node_2 = {
-            "roadm_node_id": roadm_2,
-            "srg_logical_connection_point": srg_pp_2
-        }
 
-        if xpdr_1 is None or path_computation_only:
-            response = tpce.provision_roadm_service(node_1, node_2, wl, path_computation_only)
-        else:
-            xpdr_node_1 = G.nodes[xpdr_1]["node_info"]["supporting-node"][0]["node-ref"]
-            xpdr_node_2 = G.nodes[xpdr_2]["node_info"]["supporting-node"][0]["node-ref"]
-            node_1.update({"xpdr_node_id": xpdr_node_1, "xpdr_logical_connection_point": xpdr_pp_1})
-            node_2.update({"xpdr_node_id": xpdr_node_2, "xpdr_logical_connection_point": xpdr_pp_2})
-            response = tpce.provision_xpdr_service(node_1, node_2, wl)
-        
-        message = response["configuration-response-common"]["response-message"]
-        if message == "Path is calculated":
-            message = ("Path Available, Use Wavelength Ch: " +
-                        str(response["response-parameters"]["path-description"]["aToZ-direction"]["aToZ-wavelength-number"]))
-        elif message == "PCE calculation in progress":
-            message = "Service creation requested ..."
-        
-        return html.Div(message, id="create-response")
+    path_atoz = dash.no_update
+    if not all([srg_1, srg_pp_1, srg_2, srg_pp_2]):
+        return html.Div("You must select two SRGs with corresponding ports", id="create-response"), path_atoz
+    if xpdr_1 is not None and not all([xpdr_pp_1, xpdr_2, xpdr_pp_2]):
+        return html.Div("You must select two transponders with corresponding ports", id="create-response"), path_atoz
+    roadm_1 = G.nodes[srg_1]["node_info"]["supporting-node"][0]["node-ref"]
+    roadm_2 = G.nodes[srg_2]["node_info"]["supporting-node"][0]["node-ref"]
+    if not wl: wl = None
+    node_1 = {
+    "roadm_node_id": roadm_1,
+    "srg_logical_connection_point": srg_pp_1
+    }
+    node_2 = {
+        "roadm_node_id": roadm_2,
+        "srg_logical_connection_point": srg_pp_2
+    }
+
+    if xpdr_1 is None or path_computation_only:
+        response = tpce.provision_roadm_service(node_1, node_2, wl, path_computation_only)
+    else:
+        xpdr_node_1 = G.nodes[xpdr_1]["node_info"]["supporting-node"][0]["node-ref"]
+        xpdr_node_2 = G.nodes[xpdr_2]["node_info"]["supporting-node"][0]["node-ref"]
+        node_1.update({"xpdr_node_id": xpdr_node_1, "xpdr_logical_connection_point": xpdr_pp_1})
+        node_2.update({"xpdr_node_id": xpdr_node_2, "xpdr_logical_connection_point": xpdr_pp_2})
+        response = tpce.provision_xpdr_service(node_1, node_2, wl)
+    
+    message = response["configuration-response-common"]["response-message"]       
+    if message == "Path is calculated":
+        path_atoz = response["response-parameters"]["path-description"]["aToZ-direction"]["aToZ"]
+        message = ("Path Available, Use Wavelength Ch: " +
+                    str(response["response-parameters"]["path-description"]["aToZ-direction"]["aToZ-wavelength-number"]))
+    elif message == "PCE calculation in progress":
+        message = "Service creation requested ..."
+    
+    return html.Div(message, id="create-response"), path_atoz
             
 if __name__ == '__main__':
     app.run_server()
