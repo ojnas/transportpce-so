@@ -10,16 +10,6 @@ def graph_from_topology(topology):
     G = nx.DiGraph()
    
     for node in topology["node"]:
-        if node["org-openroadm-common-network:node-type"] == "SRG":
-            available_wavelengths = [wl["index"] for wl in node["org-openroadm-network-topology:srg-attributes"]["available-wavelengths"]]
-            available_wavelengths.sort()       
-            node["available-wavelengths"] = str(available_wavelengths)[1:-1]
-            node.pop("org-openroadm-network-topology:srg-attributes", None)
-        elif node["org-openroadm-common-network:node-type"] == "DEGREE":
-            available_wavelengths = [wl["index"] for wl in node["org-openroadm-network-topology:degree-attributes"]["available-wavelengths"]]
-            available_wavelengths.sort()  
-            node["available-wavelengths"] = str(available_wavelengths)[1:-1]
-            node.pop("org-openroadm-network-topology:degree-attributes", None)   
         G.add_node(node["node-id"], node_info = node)
 
     for link in topology["ietf-network-topology:link"]:
@@ -74,16 +64,31 @@ def figure_from_graph(G, port_mapping = None):
         node_hover_y.append(y)
         node_annotations.append(dict(ax=x, ay=y, x=x, y=y, xref="x", yref="y", text=node,
                                     bgcolor="#0d0887", borderpad=3, font=dict(color="white")))
+        
         node_info = deepcopy(G.nodes[node]["node_info"])
-        tps = node_info["ietf-network-topology:termination-point"]
-        if node_info["org-openroadm-common-network:node-type"] == "DEGREE":
+        tps = node_info["ietf-network-topology:termination-point"]     
+        node_type = node_info["org-openroadm-common-network:node-type"]
+        
+        if node_type == "DEGREE":
             node_info["ietf-network-topology:termination-point"] = [tp for tp in tps if tp["org-openroadm-common-network:tp-type"] == "DEGREE-TXRX-TTP"]
-        elif node_info["org-openroadm-common-network:node-type"] == "SRG":
+            available_wavelengths = [wl["index"] for wl in node_info["org-openroadm-network-topology:degree-attributes"]["available-wavelengths"]]
+            available_wavelengths.sort()  
+            node_info["available-wavelengths"] = str(available_wavelengths)[1:-1]
+            node_info.pop("org-openroadm-network-topology:degree-attributes")
+        elif node_type == "SRG":
             node_info["ietf-network-topology:termination-point"] = [tp for tp in tps if tp["org-openroadm-common-network:tp-type"] == "SRG-TXRX-PP"]
-        elif node_info["org-openroadm-common-network:node-type"] == "XPONDER":
+            available_wavelengths = [wl["index"] for wl in node_info["org-openroadm-network-topology:srg-attributes"]["available-wavelengths"]]
+            available_wavelengths.sort()       
+            node_info["available-wavelengths"] = str(available_wavelengths)[1:-1]
+            node_info.pop("org-openroadm-network-topology:srg-attributes")
+        elif node_type == "XPONDER":
             node_info["ietf-network-topology:termination-point"] = [tp for tp in tps if tp["org-openroadm-common-network:tp-type"] == "XPONDER-NETWORK"]
-        for tp in node_info["ietf-network-topology:termination-point"]:
-            tp.pop("org-openroadm-common-network:tp-type", None)
+        
+        for tp in tps:
+            tp.pop("org-openroadm-common-network:tp-type")
+            
+        node_info["ietf-network-topology:termination-point"].sort(key = lambda x: x["tp-id"])
+        
         if port_mapping is not None:
             pm_info = next(deepcopy(pm) for pm in port_mapping if pm["node-id"] == node_info["supporting-node"][0]["node-ref"])
             pm_info.pop("cp-to-degree", None)

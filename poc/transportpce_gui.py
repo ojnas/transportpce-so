@@ -31,7 +31,7 @@ app.layout = html.Div([
             dcc.Dropdown(
                 id='xpdr-1',
                 options=[{'label': n, 'value': n} for n in xpdr_nodes],
-                placeholder="Select transponder 1"
+                placeholder="Select transponder 1 (or leave empty for SRG-to-SRG service)"
             ),
             dcc.Dropdown(
                 id='xpdr-pp-1',
@@ -72,8 +72,8 @@ app.layout = html.Div([
         html.Div(
             dcc.Dropdown(
                 id='wl',
-                options = [{'label': "auto", 'value': 0}] + [{'label': f"Ch: {n}", 'value': n} for n in range(1,41)],
-                placeholder="Select wavelength channel"
+                options = [{'label': f"Ch: {n}", 'value': n} for n in range(1,41)],
+                placeholder="Select wavelength channel (or leave empty for automatic assignment)"
             ),
         style={'width': '50%'}),
     ]),
@@ -245,7 +245,7 @@ def create_service(n_clicks, xpdr_1, xpdr_pp_1, srg_1, srg_pp_1, xpdr_2, xpdr_pp
         return html.Div("You must select two transponders with corresponding ports", id="create-response"), path_atoz
     roadm_1 = G.nodes[srg_1]["node_info"]["supporting-node"][0]["node-ref"]
     roadm_2 = G.nodes[srg_2]["node_info"]["supporting-node"][0]["node-ref"]
-    if not wl: wl = None
+
     node_1 = {
     "roadm_node_id": roadm_1,
     "srg_logical_connection_point": srg_pp_1
