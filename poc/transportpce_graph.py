@@ -53,7 +53,13 @@ def figure_from_graph(G, port_mapping = None):
         
     edge_hover_trace = go.Scatter(x=edge_hover_x, y=edge_hover_y,
                                     marker=dict(color="#fb9f3a"), mode="markers", hovertext=edge_hovertext, hoverinfo="text")
-
+    
+    if port_mapping is not None:
+        pm_dict = {}
+        for pm in port_mapping:
+            pm.pop("cp-to-degree", None)
+            pm_dict[pm["node-id"]] = pm
+    
     node_hover_x = []
     node_hover_y = []
     node_hovertext =[]
@@ -90,9 +96,8 @@ def figure_from_graph(G, port_mapping = None):
         node_info["ietf-network-topology:termination-point"].sort(key = lambda x: x["tp-id"])
         
         if port_mapping is not None:
-            pm_info = next(deepcopy(pm) for pm in port_mapping if pm["node-id"] == node_info["supporting-node"][0]["node-ref"])
-            pm_info.pop("cp-to-degree", None)
-            node_info.pop("supporting-node", None)
+            pm_info = deepcopy(pm_dict[node_info["supporting-node"][0]["node-ref"]])
+            node_info.pop("supporting-node")
             mapping = pm_info.pop("mapping")
             if node_info["org-openroadm-common-network:node-type"] in ("SRG", "DEGREE"):
                 mapping = [m for m in mapping if node.split("-")[-1] == m["logical-connection-point"].split("-")[0]]
