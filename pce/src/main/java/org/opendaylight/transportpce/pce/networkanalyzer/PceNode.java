@@ -121,7 +121,7 @@ public class PceNode {
                     break;
             }
         }
-        if (this.availableSrgPp.isEmpty() && this.availableSrgCp.isEmpty()) {
+        if (this.availableSrgPp.isEmpty()) {
             LOG.error("initSrgTpList: ROADM SRG TerminationPoint list is empty for node {}", this.toString());
             this.valid = false;
             return;
