@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import json
+import yaml
 from copy import deepcopy
 import networkx as nx
 import plotly.graph_objects as go
@@ -44,8 +44,8 @@ def figure_from_graph(G, port_mapping = None):
         edge_y.extend([y0, y1, None])
         edge_hover_x.append((x0 + x1) / 2)
         edge_hover_y.append((y0 + y1) / 2)   
-        edge_hovertext.append("<br>".join([f"Direction {edge[0]} -> {edge[1]}:", json.dumps(G.edges[edge]["link_info"], indent=4).replace("\n", "<br>"),
-                                f"Direction {edge[1]} -> {edge[0]}:", json.dumps(G.edges[opposite_edge]["link_info"], indent=4).replace("\n", "<br>")]))
+        edge_hovertext.append("<br>".join([f"Direction {edge[0]} -> {edge[1]}:", yaml.dump(G.edges[edge]["link_info"]).replace("\n", "<br>"),
+                                f"Direction {edge[1]} -> {edge[0]}:", yaml.dump(G.edges[opposite_edge]["link_info"]).replace("\n", "<br>")]))
         seen_edges.append(edge)
 
     edge_trace = go.Scatter(x=edge_x, y=edge_y,
@@ -103,11 +103,11 @@ def figure_from_graph(G, port_mapping = None):
                 mapping = [m for m in mapping if node.split("-")[-1] == m["logical-connection-point"].split("-")[0]]
             for m in mapping:
                 m.pop("port-direction", None)
-            node_hovertext.append("<br>".join(["Node:", json.dumps(node_info, indent=4).replace("\n", "<br>"),
-                                    "Mapping:", json.dumps(mapping, indent=4).replace("\n", "<br>"),
-                                    "Supporting node:", json.dumps(pm_info, indent=4).replace("\n", "<br>")]))
+            node_hovertext.append("<br>".join(["Node:", yaml.dump(node_info).replace("\n", "<br>"),
+                                    "Mapping:", yaml.dump(mapping).replace("\n", "<br>"),
+                                    "Supporting node:", yaml.dump(pm_info).replace("\n", "<br>")]))
         else:
-            node_hovertext.append("<br>".join(["Node:", json.dumps(node_info, indent=4).replace("\n", "<br>")]))
+            node_hovertext.append("<br>".join(["Node:", yaml.dump(node_info).replace("\n", "<br>")]))
         
     node_hover_trace = go.Scatter(x=node_hover_x, y=node_hover_y,
                                     marker=dict(color="#0d0887"), hovertext=node_hovertext, hoverinfo="text", mode="markers")
