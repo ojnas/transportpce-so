@@ -32,8 +32,8 @@ else:
 
 G = tg.graph_from_topology(topology)
 
-external_stylesheets = None
-#external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+#external_stylesheets = None
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 #external_stylesheets = ['https://adi.tilde.institute/default.css/default.css']
 #external_stylesheets = ['https://andybrewer.github.io/mvp/mvp.css']
 
@@ -110,10 +110,14 @@ app.layout = html.Div([
                         value=False,
                         labelStyle={'display': 'inline-block'}),
             style={'display': 'inline-block'})],
+        style={'display': 'inline-block', 'width': '60%'}),
+        
+        html.Div(
+            html.Button('Delete Service', id='service-delete-button'),
         style={'display': 'inline-block'}),
         
         html.Div(
-            html.Button('Update topology', id='update-button'),
+            html.Button('Clear All', id='clear-input-button'),
         style={'display': 'inline-block', 'float': 'right'}),
     ],
     style={'width': '50%', 'display': 'inline-block'}),
@@ -124,12 +128,13 @@ app.layout = html.Div([
     html.Div(dcc.Loading(children=[html.Div(id="subscribe-waiting")], type="default"),
     style={'display': 'inline-block'}),
 
-    dcc.Dropdown(
-        id='service-path-name',
-        options=sp_options,
-        placeholder="Show service path"
-    ),
-
+    html.Div(
+        dcc.Dropdown(
+            id='service-path-name',
+            options=sp_options,
+            placeholder="Select service path to show"),
+    style={'width': '100%', 'display': 'inline-block'}),
+    
     dcc.Graph(
         style={'height': 1000},
         id='topology'
@@ -138,41 +143,46 @@ app.layout = html.Div([
     html.Div(id='computed-path', hidden=True),
     html.Div(id='requested-service-name', hidden=True),
     html.Div(id='ws-trigger', hidden=True),
+    html.Div(id='ws-delete-trigger', hidden=True),
     html.Div(id='service-created-trigger', hidden=True),
-    html.Div(id='clear-status-trigger', hidden=True)
+    html.Div(id='service-deleted-trigger', hidden=True),
+    html.Div(id='clear-status-trigger', hidden=True),
 ])
 
 @app.callback(
     [Output('topology', 'figure'),
-    Output('ws-trigger', 'children')],
-    [Input('update-button', 'n_clicks'),
-    Input('service-path-name', 'value'),
-    Input('status-text', 'children')],
+     Output('ws-trigger', 'children'),
+     Output('ws-delete-trigger', 'children')],
+    [Input('service-path-name', 'value'),
+     Input('status-text', 'children')],
     [State('computed-path', 'children')])
-def update_graph(n_clicks, service_path_name, status_text, computed_path):
+def update_graph(service_path_name, status_text, computed_path):
     trig = dash.callback_context.triggered[0]
-    if trig["prop_id"] == "status-text.children" and status_text in ("Service Created", ""):
-        raise PreventUpdate
     
+    if trig["prop_id"] == "status-text.children" and status_text == "Service Deletion in Progress":
+        return dash.no_update, dash.no_update, 1
+
     topology = tpce.get_topology()
     G = tg.graph_from_topology(topology)
     fig = tg.figure_from_graph(G, port_mapping)
     
-    if trig["prop_id"] == "status-text.children" and computed_path is not None:
-        path_trace = tg.trace_from_service_path(computed_path, G)
-        fig.add_trace(path_trace)
+    if trig["prop_id"] == "service-path-name.value":
+        if service_path_name is None:
+            return fig, dash.no_update, dash.no_update
         
-        if status_text != "Service setup in progress":
-            return fig, dash.no_update
-        
-        return fig, 1
-    
-    if trig["prop_id"] == "service-path-name.value" and service_path_name is not None:
         sp = tpce.get_service_path(service_path_name)
         path_trace = tg.trace_from_service_path(sp["path-description"]["aToZ-direction"]["aToZ"], G)
         fig.add_trace(path_trace)
-    
-    return fig, dash.no_update
+        return fig, dash.no_update, dash.no_update
+       
+    if computed_path is not None:
+        path_trace = tg.trace_from_service_path(computed_path, G)
+        fig.add_trace(path_trace)
+        
+    if status_text == "Service setup in progress":
+        return fig, 1, dash.no_update
+        
+    return fig, dash.no_update, dash.no_update
 
 @app.callback(
     [Output('xpdr-1', 'value'), Output('xpdr-pp-1', 'value'),
@@ -180,7 +190,7 @@ def update_graph(n_clicks, service_path_name, status_text, computed_path):
     Output('srg-1', 'value'), Output('srg-pp-1', 'value'),
     Output('srg-2', 'value'), Output('srg-pp-2', 'value'),
     Output('wl', 'value'), Output('clear-status-trigger', 'children')],
-    [Input('update-button', 'n_clicks')])
+    [Input('clear-input-button', 'n_clicks')])
 def clear_values(n_clicks):
     if n_clicks is None:
         raise PreventUpdate
@@ -245,21 +255,39 @@ def set_srg_pp_2_options(srg_2):
      Output('computed-path', 'children'),
      Output('requested-service-name', 'children')],
     [Input('request-button', 'n_clicks'),
+     Input('service-delete-button', 'n_clicks'),
      Input('service-created-trigger', 'children'),
+     Input('service-deleted-trigger', 'children'),
      Input('clear-status-trigger', 'children')],
     [State('xpdr-1', 'value'), State('xpdr-pp-1', 'value'), State('srg-1', 'value'), State('srg-pp-1', 'value'),
      State('xpdr-2', 'value'), State('xpdr-pp-2', 'value'), State('srg-2', 'value'), State('srg-pp-2', 'value'),
-     State('wl', 'value'), State('path-computation-only', 'value')])
-def create_service(n_clicks, sc_trigger, clear_trigger, xpdr_1, xpdr_pp_1,
-                    srg_1, srg_pp_1, xpdr_2, xpdr_pp_2, srg_2, srg_pp_2, wl, path_computation_only):
-    if n_clicks is None:
+     State('wl', 'value'), State('path-computation-only', 'value'), State('service-path-name', 'value')])
+def create_or_delete_service(n_clicks_request, n_clicks_delete, sc_trigger, del_trigger, clear_trigger, xpdr_1, xpdr_pp_1,
+                    srg_1, srg_pp_1, xpdr_2, xpdr_pp_2, srg_2, srg_pp_2, wl, path_computation_only, delete_service_name):
+    if n_clicks_request is None and n_clicks_delete is None:
         raise PreventUpdate
 
     trig = dash.callback_context.triggered[0]
+    
     if trig["prop_id"] == "service-created-trigger.children":
-        return "Service Created", None, None
-    elif trig["prop_id"] == "clear-status-trigger.children":
+        return "Service Created", dash.no_update, None
+    
+    if trig["prop_id"] == "service-deleted-trigger.children":
+        return "Service Deleted", None, None
+    
+    if trig["prop_id"] == "clear-status-trigger.children":
         return "", None, None
+        
+    if trig["prop_id"] == "service-delete-button.n_clicks":
+        if delete_service_name is None:
+            return "Select service to delete", dash.no_update, dash.no_update
+        
+        response = tpce.delete_service(service_name = delete_service_name)
+        status = response["configuration-response-common"]["response-message"]
+        if status == "Renderer service delete in progress":
+            return "Service Deletion in Progress", dash.no_update, dash.no_update
+        
+        return status, dash.no_update, dash.no_update
     
     if not all([srg_1, srg_pp_1, srg_2, srg_pp_2]):
         return "You must select two SRGs with corresponding ports", None, None
@@ -313,34 +341,54 @@ def create_service(n_clicks, sc_trigger, clear_trigger, xpdr_1, xpdr_pp_1,
         requested_service_name = None
     
     return status, computed_path, requested_service_name
-    
+  
 @app.callback(
     [Output('service-path-name', 'options'),
      Output('service-created-trigger', 'children'),
+     Output('service-deleted-trigger', 'children'),
      Output('subscribe-waiting', 'children')],
-    [Input('ws-trigger', 'children')],
-    [State('requested-service-name', 'children')])
-def subsribe_service_update(ws_trigger, service_name):
-    if service_name is None:
+    [Input('ws-trigger', 'children'),
+     Input('ws-delete-trigger', 'children')],
+    [State('requested-service-name', 'children'),
+     State('service-path-name', 'value')])
+def subsribe_service_update(ws_trigger, ws_delete_trigger, requested_service_name, delete_service_name):
+
+    print("subscribe: ", ws_trigger, ws_delete_trigger)
+    if ws_trigger is None and ws_delete_trigger is None:
         raise PreventUpdate
         
-    ws_loc = tpce.subscribe_service_status(service_name)["location"] 
-    ws = create_connection(ws_loc)
-    
-    while True:
-        message = ws.recv()
-        notification = loads(message)
-        print(notification)
-        if notification["notification"]["data-changed-notification"]["data-change-event"]["data"]["operational-state"]["content"] == "inService":
-            break
+    trig = dash.callback_context.triggered[0]
+
+    if trig["prop_id"] == "ws-delete-trigger.children":
+        ws_loc = tpce.subscribe_service_status(delete_service_name)["location"] 
+        ws = create_connection(ws_loc)
+        while True:
+            message = ws.recv()
+            notification = loads(message)
+            print(json.dumps(notification, indent = 4))
+            if notification["notification"]["data-changed-notification"]["data-change-event"]["operation"] == "deleted":
+                break
+        create_trigger, delete_trigger = dash.no_update, 1
+    else:
+        ws_loc = tpce.subscribe_service_status(requested_service_name)["location"] 
+        ws = create_connection(ws_loc)
+        while True:
+            message = ws.recv()
+            notification = loads(message)
+            print(json.dumps(notification, indent = 4))
+            if notification["notification"]["data-changed-notification"]["data-change-event"]["data"]["operational-state"]["content"] == "inService":
+                break
+        create_trigger, delete_trigger = 1, dash.no_update
 
     ws.close()
     
     service_path_list = tpce.get_service_path_list()
     if service_path_list is None:
-        return [], dash.no_update, None
-    
-    return [{'label': sp["service-path-name"], 'value': sp["service-path-name"]} for sp in service_path_list["service-paths"]], 1, None
+        options = []
+    else:
+        options = [{'label': sp["service-path-name"], 'value': sp["service-path-name"]} for sp in service_path_list["service-paths"]]
+        
+    return options, create_trigger, delete_trigger, None
 
 if __name__ == '__main__':
     app.run_server()

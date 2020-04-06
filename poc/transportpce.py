@@ -104,12 +104,47 @@ class Controller():
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()
         
-    # subscribe to notifications from PCE (not currently working):
+    # subscribe to notifications from PCE:
     def subscribe_pce_result(self):
         url = f"{self.baseurl}/operations/sal-remote:create-notification-stream"
         data = {"input": {
                     "notifications": ["(http://org/opendaylight/transportpce/pce?revision=2019-06-24)service-path-rpc-result"]}}
         stream_name = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth).json()["output"]["notification-stream-identifier"]
+        url = f"{self.baseurl}/streams/stream/{stream_name}"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()
+        
+    # subscribe to notifications from Renderer:
+    def subscribe_renderer_result(self):
+        url = f"{self.baseurl}/operations/sal-remote:create-notification-stream"
+        data = {"input": {
+                    "notifications": ["(http://org/opendaylight/transportpce/renderer?revision=2017-10-17)service-rpc-result-sp"]}}
+        stream_name = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth).json()["output"]["notification-stream-identifier"]
+        url = f"{self.baseurl}/streams/stream/{stream_name}"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()
+        
+    # subscribe to notifications from Service Handler:
+    def subscribe_service_result(self):
+        url = f"{self.baseurl}/operations/sal-remote:create-notification-stream"
+        data = {"input": {
+                    "notifications": ["(http://org/opendaylight/transportpce/servicehandler?revision=2017-10-17)service-rpc-result-sh"]}}
+        stream_name = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth).json()["output"]["notification-stream-identifier"]
+        print(stream_name)
+        url = f"{self.baseurl}/streams/stream/{stream_name}"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()
+    
+    # subsribe to all streams
+    def subscribe_all(self):
+        url = f"{self.baseurl}/operations/sal-remote:create-notification-stream"
+        data = {"input": {
+                    "notifications": ["(http://org/opendaylight/transportpce/servicehandler?revision=2017-10-17)service-rpc-result-sh",
+                                    "(http://org/opendaylight/transportpce/renderer?revision=2017-10-17)service-rpc-result-sp",
+                                    "(http://org/opendaylight/transportpce/pce?revision=2019-06-24)service-path-rpc-result"],
+                                    "sal-remote-augment:notification-output-type": "JSON"}}
+        stream_name = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth).json()["output"]["notification-stream-identifier"]
+        print(stream_name)
         url = f"{self.baseurl}/streams/stream/{stream_name}"
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()
@@ -307,6 +342,23 @@ class Controller():
         response = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
         return response.json()["output"]
         
+    # OpenROADM service model service-delete RPC:
+    def delete_service(self, request_id = "default_rid", service_name = "default_name"):
+        url = f"{self.baseurl}/operations/org-openroadm-service:service-delete"
+        data = {"input": {
+                "sdnc-request-header": {
+                    "request-id": request_id,
+                    "rpc-action": "service-delete",
+                },
+                "service-delete-req-info": {
+                    "service-name": service_name,
+                    "tail-retention": "no"
+                }
+            }
+        }
+        response = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
+        return response.json()["output"]
+    
     # Create service between two XPDRs after linking XPDR ports with ROADM SRG ports and optionally specifying wavelength:
     def provision_xpdr_service(self, node_1, node_2, wl_index = None, path_computation_only = False, service_name = None):
         xpdr_node_id_1 = node_1["xpdr_node_id"]
