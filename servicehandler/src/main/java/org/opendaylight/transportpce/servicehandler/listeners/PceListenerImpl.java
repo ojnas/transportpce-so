@@ -148,6 +148,8 @@ public class PceListenerImpl implements TransportpcePceListener {
                             LOG.info("cancel resource reserve done, relaunching PCE path computation ...");
                             this.pceServiceWrapper.performPCE(input.getServiceCreateInput(), true);
                             this.serviceReconfigure = false;
+                        } else {
+                            setInput(null);
                         }
                     } else if (servicePathRpcResult.getStatus() == RpcStatusEx.Failed) {
                         LOG.info("PCE cancel resource failed !");
