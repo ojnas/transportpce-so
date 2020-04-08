@@ -5,8 +5,9 @@ from dash.exceptions import PreventUpdate
 from dash.dependencies import Input, Output, State
 from transportpce import Controller
 import transportpce_graph as tg
-from websocket import create_connection
-from json import loads
+import websocket
+from threading import Thread
+import json
 
 tpce = Controller()
 topology = tpce.get_topology()
@@ -23,14 +24,14 @@ srg_nodes.sort()
 
 port_mapping = tpce.get_portmapping()
 
-service_path_list = tpce.get_service_path_list()
-if service_path_list is None:
-    sp_options = []
-else:
-    sp_options = [{'label': sp["service-path-name"], 'value': sp["service-path-name"]} for sp in service_path_list["service-paths"]]
-
-
 G = tg.graph_from_topology(topology)
+
+def on_message(ws, message):
+    notification = json.loads(message)
+    print(json.dumps(notification, indent = 4))
+
+def on_error(ws, error):
+    print(error)
 
 #external_stylesheets = None
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -131,7 +132,6 @@ app.layout = html.Div([
     html.Div(
         dcc.Dropdown(
             id='service-path-name',
-            options=sp_options,
             placeholder="Select service path to show"),
     style={'width': '100%', 'display': 'inline-block'}),
     
@@ -159,7 +159,7 @@ app.layout = html.Div([
 def update_graph(service_path_name, status_text, computed_path):
     trig = dash.callback_context.triggered[0]
     
-    if trig["prop_id"] == "status-text.children" and status_text == "Service Deletion in Progress":
+    if trig["prop_id"] == "status-text.children" and status_text == "Service deletion in progress":
         return dash.no_update, dash.no_update, 1
 
     topology = tpce.get_topology()
@@ -270,10 +270,10 @@ def create_or_delete_service(n_clicks_request, n_clicks_delete, sc_trigger, del_
     trig = dash.callback_context.triggered[0]
     
     if trig["prop_id"] == "service-created-trigger.children":
-        return "Service Created", dash.no_update, None
+        return "Service created", dash.no_update, None
     
     if trig["prop_id"] == "service-deleted-trigger.children":
-        return "Service Deleted", None, None
+        return "Service deleted", None, None
     
     if trig["prop_id"] == "clear-status-trigger.children":
         return "", None, None
@@ -285,7 +285,7 @@ def create_or_delete_service(n_clicks_request, n_clicks_delete, sc_trigger, del_
         response = tpce.delete_service(service_name = delete_service_name)
         status = response["configuration-response-common"]["response-message"]
         if status == "Renderer service delete in progress":
-            return "Service Deletion in Progress", dash.no_update, dash.no_update
+            return "Service deletion in progress", dash.no_update, dash.no_update
         
         return status, dash.no_update, dash.no_update
     
@@ -308,7 +308,6 @@ def create_or_delete_service(n_clicks_request, n_clicks_delete, sc_trigger, del_
         
     if xpdr_1 is None:
         service_name = f"{roadm_1}_{srg_pp_1}_to_{roadm_2}_{srg_pp_2}"
-        response = tpce.provision_roadm_service(node_1, node_2, wl, True, service_name)
     else:
         xpdr_node_1 = G.nodes[xpdr_1]["node_info"]["supporting-node"][0]["node-ref"]
         xpdr_node_2 = G.nodes[xpdr_2]["node_info"]["supporting-node"][0]["node-ref"]
@@ -316,32 +315,42 @@ def create_or_delete_service(n_clicks_request, n_clicks_delete, sc_trigger, del_
                         f"{xpdr_node_2}_{xpdr_pp_2}_{roadm_2}_{srg_pp_2}")
         node_1.update({"xpdr_node_id": xpdr_node_1, "xpdr_logical_connection_point": xpdr_pp_1})
         node_2.update({"xpdr_node_id": xpdr_node_2, "xpdr_logical_connection_point": xpdr_pp_2})
-        response = tpce.provision_xpdr_service(node_1, node_2, wl, True, service_name)
     
-    if response["configuration-response-common"]["response-message"] != "Path is calculated":
-        return "No Path Available", None, None
+    computed_path = None
+    requested_service_name = None
     
-    computed_path = response["response-parameters"]["path-description"]["aToZ-direction"]["aToZ"]
+    if not path_computation_only:
+        ws_loc = tpce.subscribe_pce_result()["location"]
+        ws = websocket.create_connection(ws_loc)
     
-    if path_computation_only:
-        status = ("Path Available, Use Wavelength Ch: " +
-                    str(response["response-parameters"]["path-description"]["aToZ-direction"]["aToZ-wavelength-number"]))
-        return status, computed_path, None
+    response = tpce.provision_service(node_1, node_2, wl, path_computation_only, service_name)
+    status = response["configuration-response-common"]["response-message"]
     
-    if xpdr_1 is None:
-        response = tpce.provision_roadm_service(node_1, node_2, wl, False, service_name)
-    else:
-        response = tpce.provision_xpdr_service(node_1, node_2, wl, False, service_name)
-    
-    status = response["configuration-response-common"]["response-message"]       
     if status == "PCE calculation in progress":
-        requested_service_name = service_name
-        status = "Service setup in progress"
+        notification = json.loads(ws.recv())["ietf-restconf:notification"]["transportpce-pce:service-path-rpc-result"]
+        status_text = notification["status-message"]
+        if status_text == "Service compliant, submitting pathComputation Request ...":
+            notification = json.loads(ws.recv())["ietf-restconf:notification"]["transportpce-pce:service-path-rpc-result"]
+            if notification["status-message"] == "Path is calculated":
+                status_text = "Service setup in progress"
+                computed_path = notification["path-description"]["aToZ-direction"]["aToZ"]
+                requested_service_name = service_name
+            elif notification["status-message"] == "Path not calculated":
+                status_text = "No path available"
+            else:
+                status_text = notification["status-message"]
+    elif status == "Path is calculated":
+        computed_path = response["response-parameters"]["path-description"]["aToZ-direction"]["aToZ"]
+        status_text = ("Path available with wavelength Ch: " +
+                        str(response["response-parameters"]["path-description"]["aToZ-direction"]["aToZ-wavelength-number"]))
     else:
-        requested_service_name = None
+        status_text = status
+        
+    if not path_computation_only:
+        ws.close()
     
-    return status, computed_path, requested_service_name
-  
+    return status_text, computed_path, requested_service_name    
+        
 @app.callback(
     [Output('service-path-name', 'options'),
      Output('service-created-trigger', 'children'),
@@ -353,34 +362,32 @@ def create_or_delete_service(n_clicks_request, n_clicks_delete, sc_trigger, del_
      State('service-path-name', 'value')])
 def subsribe_service_update(ws_trigger, ws_delete_trigger, requested_service_name, delete_service_name):
 
-    print("subscribe: ", ws_trigger, ws_delete_trigger)
-    if ws_trigger is None and ws_delete_trigger is None:
-        raise PreventUpdate
-        
     trig = dash.callback_context.triggered[0]
-
-    if trig["prop_id"] == "ws-delete-trigger.children":
+    
+    if ws_trigger is None and ws_delete_trigger is None:
+        create_trigger, delete_trigger = dash.no_update, dash.no_update
+    elif trig["prop_id"] == "ws-delete-trigger.children":
         ws_loc = tpce.subscribe_service_status(delete_service_name)["location"] 
-        ws = create_connection(ws_loc)
+        ws = websocket.create_connection(ws_loc)
         while True:
             message = ws.recv()
-            notification = loads(message)
-            print(json.dumps(notification, indent = 4))
+            notification = json.loads(message)
+            #print(json.dumps(notification, indent = 4))
             if notification["notification"]["data-changed-notification"]["data-change-event"]["operation"] == "deleted":
                 break
         create_trigger, delete_trigger = dash.no_update, 1
+        ws.close()
     else:
         ws_loc = tpce.subscribe_service_status(requested_service_name)["location"] 
-        ws = create_connection(ws_loc)
+        ws = websocket.create_connection(ws_loc)
         while True:
             message = ws.recv()
-            notification = loads(message)
-            print(json.dumps(notification, indent = 4))
+            notification = json.loads(message)
+            #print(json.dumps(notification, indent = 4))
             if notification["notification"]["data-changed-notification"]["data-change-event"]["data"]["operational-state"]["content"] == "inService":
                 break
         create_trigger, delete_trigger = 1, dash.no_update
-
-    ws.close()
+        ws.close()
     
     service_path_list = tpce.get_service_path_list()
     if service_path_list is None:
@@ -391,4 +398,8 @@ def subsribe_service_update(ws_trigger, ws_delete_trigger, requested_service_nam
     return options, create_trigger, delete_trigger, None
 
 if __name__ == '__main__':
+    ws_loc = tpce.subscribe_all()["location"]
+    ws = websocket.WebSocketApp(ws_loc, on_message = on_message, on_error = on_error)
+    ws_thread = Thread(target = ws.run_forever, daemon = True)
+    ws_thread.start()
     app.run_server()

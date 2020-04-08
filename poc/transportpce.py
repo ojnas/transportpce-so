@@ -108,7 +108,8 @@ class Controller():
     def subscribe_pce_result(self):
         url = f"{self.baseurl}/operations/sal-remote:create-notification-stream"
         data = {"input": {
-                    "notifications": ["(http://org/opendaylight/transportpce/pce?revision=2019-06-24)service-path-rpc-result"]}}
+                    "notifications": ["(http://org/opendaylight/transportpce/pce?revision=2019-06-24)service-path-rpc-result"],
+                                    "sal-remote-augment:notification-output-type": "JSON"}}
         stream_name = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth).json()["output"]["notification-stream-identifier"]
         url = f"{self.baseurl}/streams/stream/{stream_name}"
         response = requests.get(url, headers=self.headers, auth=self.auth)
@@ -118,7 +119,8 @@ class Controller():
     def subscribe_renderer_result(self):
         url = f"{self.baseurl}/operations/sal-remote:create-notification-stream"
         data = {"input": {
-                    "notifications": ["(http://org/opendaylight/transportpce/renderer?revision=2017-10-17)service-rpc-result-sp"]}}
+                    "notifications": ["(http://org/opendaylight/transportpce/renderer?revision=2017-10-17)service-rpc-result-sp"],
+                                    "sal-remote-augment:notification-output-type": "JSON"}}
         stream_name = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth).json()["output"]["notification-stream-identifier"]
         url = f"{self.baseurl}/streams/stream/{stream_name}"
         response = requests.get(url, headers=self.headers, auth=self.auth)
@@ -128,9 +130,9 @@ class Controller():
     def subscribe_service_result(self):
         url = f"{self.baseurl}/operations/sal-remote:create-notification-stream"
         data = {"input": {
-                    "notifications": ["(http://org/opendaylight/transportpce/servicehandler?revision=2017-10-17)service-rpc-result-sh"]}}
+                    "notifications": ["(http://org/opendaylight/transportpce/servicehandler?revision=2017-10-17)service-rpc-result-sh"],
+                                    "sal-remote-augment:notification-output-type": "JSON"}}
         stream_name = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth).json()["output"]["notification-stream-identifier"]
-        print(stream_name)
         url = f"{self.baseurl}/streams/stream/{stream_name}"
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()
@@ -144,7 +146,6 @@ class Controller():
                                     "(http://org/opendaylight/transportpce/pce?revision=2019-06-24)service-path-rpc-result"],
                                     "sal-remote-augment:notification-output-type": "JSON"}}
         stream_name = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth).json()["output"]["notification-stream-identifier"]
-        print(stream_name)
         url = f"{self.baseurl}/streams/stream/{stream_name}"
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()
@@ -358,6 +359,15 @@ class Controller():
         }
         response = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
         return response.json()["output"]
+    
+    # Create service between two XPDRs after linking XPDR ports with ROADM SRG ports and optionally specifying wavelength:
+    def provision_service(self, node_1, node_2, wl_index = None, path_computation_only = False, service_name = None):
+        if "xpdr_node_id" in node_1 and "xpdr_node_id" in node_2:
+            response = self.provision_xpdr_service(node_1, node_2, wl_index, path_computation_only, service_name)
+        else:
+            response = self.provision_roadm_service(node_1, node_2, wl_index, path_computation_only, service_name)
+        
+        return response
     
     # Create service between two XPDRs after linking XPDR ports with ROADM SRG ports and optionally specifying wavelength:
     def provision_xpdr_service(self, node_1, node_2, wl_index = None, path_computation_only = False, service_name = None):
