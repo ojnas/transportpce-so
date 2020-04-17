@@ -56,6 +56,12 @@ class Controller():
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()["node"][0]
         
+    def get_termination_point(self, node_id, tp_id):
+        url = (f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/node/{node_id}/"
+                f"ietf-network-topology:termination-point/{tp_id}")
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()["ietf-network-topology:termination-point"][0]
+        
     def get_service_list(self):
         url = f"{self.baseurl}/operational/org-openroadm-service:service-list"
         response = requests.get(url, headers=self.headers, auth=self.auth)
@@ -150,6 +156,12 @@ class Controller():
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()
     
+    # upload topology
+    def put_topology(self, topology):
+        url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology"
+        response = requests.put(url, data=json.dumps(topology), headers=self.headers, auth=self.auth)
+        return response
+        
     # limit available wavelengths for an srg (useful e.g. for AWGs):
     def set_srg_wavelengths(self, srg_id, wavelengths):
         url = (f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/node/{srg_id}/"
@@ -188,16 +200,9 @@ class Controller():
         requests.put(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
         
     # delete link from topology to limit connectivity (useful for non-direction-less ROADMs):
-    def delete_link(self, node_id_1, node_id_2):
-        sub_1 = node_id_1.split("-")[-1]
-        sub_2 = node_id_2.split("-")[-1]
-        tp_1 = "CP" if "SRG" in sub_1 else "CTP"
-        tp_2 = "CP" if "SRG" in sub_2 else "CTP"
-        end_1 = "-".join([node_id_1, sub_1, tp_1, "TXRX"])
-        end_2 = "-".join([node_id_2, sub_2, tp_2, "TXRX"])
-        link_id_1 = end_1 + "to" + end_2
-        link_id_2 = end_2 + "to" + end_1
-        
+    def delete_link(self, node_id_1, tp_1, node_id_2, tp_2):
+        link_id_1 = f"{node_id_1}-{tp_1}to{node_id_2}-{tp_2}"
+        link_id_2 = f"{node_id_2}-{tp_2}to{node_id_1}-{tp_1}"       
         url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link_id_1}"
         requests.delete(url, headers=self.headers, auth=self.auth)
         url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link_id_2}"
@@ -381,6 +386,16 @@ class Controller():
         srg_lcp_2 = node_2["srg_logical_connection_point"]
         if isinstance(wl_index, int) : wl_index = [wl_index]
         
+        srg_id_1 = roadm_node_id_1 + "-" + srg_lcp_1.split("-")[0]
+        tp = self.get_termination_point(srg_id_1, srg_lcp_1)
+        if tp.get("org-openroadm-network-topology:pp-attributes", {}).get("used-wavelength"):
+            return {"configuration-response-common": {"response-message": "No path available"}}
+        
+        srg_id_2 = roadm_node_id_2 + "-" + srg_lcp_2.split("-")[0]
+        tp = self.get_termination_point(srg_id_2, srg_lcp_2)
+        if tp.get("org-openroadm-network-topology:pp-attributes", {}).get("used-wavelength"):
+            return {"configuration-response-common": {"response-message": "No path available"}}
+        
         self.link_xpdr_roadm(xpdr_node_id_1, xpdr_lcp_1, roadm_node_id_1, srg_lcp_1)
         self.link_xpdr_roadm(xpdr_node_id_2, xpdr_lcp_2, roadm_node_id_2, srg_lcp_2)
         
@@ -388,8 +403,6 @@ class Controller():
                         f"{xpdr_node_id_2}_{xpdr_lcp_2}_{roadm_node_id_2}_{srg_lcp_2}")
         
         if wl_index is not None:
-            srg_id_1 = roadm_node_id_1 + "-" + srg_lcp_1.split("-")[0]
-            srg_id_2 = roadm_node_id_2 + "-" + srg_lcp_2.split("-")[0]
             available_wavelengths_1 = self.get_srg_wavelengths(srg_id_1)
             available_wavelengths_2 = self.get_srg_wavelengths(srg_id_2)
             self.set_srg_wavelengths(srg_id_1, [w for w in wl_index if w in available_wavelengths_1])
