@@ -5,7 +5,7 @@ from copy import deepcopy
 import networkx as nx
 import plotly.graph_objects as go
 
-def graph_from_topology(topology):
+def graph_from_topology(topology, G_old = None):
     
     G = nx.DiGraph()
    
@@ -15,14 +15,19 @@ def graph_from_topology(topology):
     for link in topology["ietf-network-topology:link"]:
         if link["org-openroadm-common-network:link-type"] == "ROADM-TO-ROADM":          
             length = link.get("org-openroadm-network-topology:OMS-attributes", {}).get("span", {}).get("link-concatenation", [{}])[0].get("SRLG-length")
-            weight = length / 1000 if length is not None else 10
+            weight = length / 5000 if length is not None else 10
         elif link["org-openroadm-common-network:link-type"] == "EXPRESS-LINK":
             weight = 1.5
         else:
             weight = 1
         G.add_edge(link["source"]["source-node"], link["destination"]["dest-node"], link_info = link, weight = weight)
 
-    pos = nx.kamada_kawai_layout(G)
+    if G_old is None or not nx.faster_could_be_isomorphic(G, G_old):
+        pos = nx.kamada_kawai_layout(G)
+        pos = {n: list(p) for n, p in pos.items()}            
+    else:
+        pos = nx.get_node_attributes(G_old, "pos")
+        
     nx.set_node_attributes(G, pos, "pos")
     return G
 
@@ -64,7 +69,9 @@ def figure_from_graph(G, port_mapping = None):
     node_hover_y = []
     node_hovertext =[]
     node_annotations = []
+    node_text = []
     for node in G.nodes():
+        node_text.append(node)
         x, y = G.nodes[node]["pos"]
         node_hover_x.append(x)
         node_hover_y.append(y)
@@ -110,10 +117,11 @@ def figure_from_graph(G, port_mapping = None):
             node_hovertext.append("<br>".join(["Node:", yaml.dump(node_info).replace("\n", "<br>")]))
         
     node_hover_trace = go.Scatter(x=node_hover_x, y=node_hover_y,
-                                    marker=dict(color="#0d0887"), hovertext=node_hovertext, hoverinfo="text", mode="markers")
+                                    marker=dict(color="#0d0887"), text=node_text, hovertext=node_hovertext, hoverinfo="text", mode="markers")
 
     return go.Figure(data=[edge_trace, edge_hover_trace, node_hover_trace],
-                    layout=go.Layout(showlegend=False, annotations = node_annotations, margin=dict(l=25, r=25, t=25, b=25),
+                    layout=go.Layout(showlegend=False, annotations = node_annotations, clickmode="event+select", 
+                    margin=dict(l=25, r=25, t=25, b=25),
                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
 
@@ -141,4 +149,3 @@ if __name__ == '__main__':
     G = graph_from_topology(topology)
     fig = figure_from_graph(G, port_mapping)
     fig.show()
-    

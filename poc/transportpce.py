@@ -56,6 +56,11 @@ class Controller():
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()["node"][0]
         
+    def get_link(self, link_id):
+        url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link_id}"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()["ietf-network-topology:link"][0]
+        
     def get_termination_point(self, node_id, tp_id):
         url = (f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/node/{node_id}/"
                 f"ietf-network-topology:termination-point/{tp_id}")
@@ -199,13 +204,9 @@ class Controller():
                         "SRLG-length": length}]}}
         requests.put(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
         
-    # delete link from topology to limit connectivity (useful for non-direction-less ROADMs):
-    def delete_link(self, node_id_1, tp_1, node_id_2, tp_2):
-        link_id_1 = f"{node_id_1}-{tp_1}to{node_id_2}-{tp_2}"
-        link_id_2 = f"{node_id_2}-{tp_2}to{node_id_1}-{tp_1}"       
-        url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link_id_1}"
-        requests.delete(url, headers=self.headers, auth=self.auth)
-        url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link_id_2}"
+    # delete link from topology to limit connectivity:
+    def delete_link(self, link_id):   
+        url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link_id}"
         requests.delete(url, headers=self.headers, auth=self.auth)
     
     # delete add- and drop-links not in connection-map
@@ -236,8 +237,7 @@ class Controller():
             if (source_node, dest_node) in connection_map_simple:
                 continue
             link_id = link["link-id"]
-            url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link_id}"
-            requests.delete(url, headers=self.headers, auth=self.auth)
+            self.delete_link(link_id)
     
     # some functions based on RPCs defined by TransportPCE API:
     def link_xpdr_roadm(self, xpdr_node_id, xpdr_logical_connection_point, roadm_node_id, srg_logical_connection_point):
