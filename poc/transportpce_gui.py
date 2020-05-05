@@ -494,7 +494,7 @@ def create_or_delete_service(n_clicks_request, n_clicks_delete, clear_trigger, x
         osnr_atoz, gsnr_atoz = calculate_gsnr(computed_path, topology, version="so")
         osnr_ztoa, gsnr_ztoa = calculate_gsnr(computed_path_ztoa, topology, version="so")
         status_text = ["Path available with wavelength Ch: " + str(atoz_direction['aToZ-wavelength-number']), html.Br(),
-                       f"1 -> 2: ONSR = {osnr_atoz}, GSNR = {gsnr_atoz} | 2 -> 1: ONSR = {osnr_ztoa}, GSNR = {gsnr_ztoa}"]
+                       f"1 -> 2: OSNR = {osnr_atoz}, GSNR = {gsnr_atoz} | 2 -> 1: OSNR = {osnr_ztoa}, GSNR = {gsnr_ztoa}"]
     else:
         status_text = status
         
