@@ -129,7 +129,7 @@ app.layout = html.Div([
         html.Div(
             dcc.Dropdown(
                 id='wl',
-                options = [{'label': f"Ch: {n}", 'value': n} for n in range(1,41)],
+                options = [{'label': f"Ch: {n}", 'value': n} for n in range(921,961)],
                 placeholder="Select wavelength channel (or leave empty for automatic assignment)"
             ),
         style={'width': '50%'}),
@@ -470,7 +470,7 @@ def create_or_delete_service(n_clicks_request, n_clicks_delete, clear_trigger, x
         ws_loc = tpce.subscribe_pce_result()["location"]
         ws = websocket.create_connection(ws_loc)
     
-    response = tpce.provision_service(node_1, node_2, wl, path_computation_only, service_name)
+    response = tpce.provision_service(node_1, node_2, 961-wl, path_computation_only, service_name)
     status = response["configuration-response-common"]["response-message"]
     
     if status == "PCE calculation in progress":
@@ -493,7 +493,7 @@ def create_or_delete_service(n_clicks_request, n_clicks_delete, clear_trigger, x
         topology = tpce.get_topology()
         osnr_atoz, gsnr_atoz = calculate_gsnr(computed_path, topology, version="so")
         osnr_ztoa, gsnr_ztoa = calculate_gsnr(computed_path_ztoa, topology, version="so")
-        status_text = ["Path available with wavelength Ch: " + str(atoz_direction['aToZ-wavelength-number']), html.Br(),
+        status_text = ["Path available with wavelength Ch: " + str(961-atoz_direction['aToZ-wavelength-number']), html.Br(),
                        f"1 -> 2: OSNR = {osnr_atoz}, GSNR = {gsnr_atoz} | 2 -> 1: OSNR = {osnr_ztoa}, GSNR = {gsnr_ztoa}"]
     else:
         status_text = status
