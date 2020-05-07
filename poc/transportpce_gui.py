@@ -129,7 +129,7 @@ app.layout = html.Div([
         html.Div(
             dcc.Dropdown(
                 id='wl',
-                options = [{'label': f"Ch: {n}", 'value': n} for n in range(921,961)],
+                options = [{'label': f"Ch: {n}", 'value': n} for n in range(944,952)],
                 placeholder="Select wavelength channel (or leave empty for automatic assignment)"
             ),
         style={'width': '50%'}),
