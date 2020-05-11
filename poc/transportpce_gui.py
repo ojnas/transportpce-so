@@ -14,6 +14,9 @@ import networkx as nx
 
 tpce = Controller()
 
+spans = tpce.measure_and_add_oms_spanloss()
+#print(json.dumps(spans, indent = 4))
+
 port_mapping = tpce.get_portmapping()
 topology = tpce.get_topology()
 G = tg.graph_from_topology(topology)
