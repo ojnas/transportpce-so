@@ -35,6 +35,12 @@ class Controller():
                 "yang-ext:mount/org-openroadm-device:org-openroadm-device")
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()["org-openroadm-device"]
+        
+    def get_pm(self, node_id):
+        url = (f"{self.baseurl}/operational/network-topology:network-topology/topology/topology-netconf/node/{node_id}/"
+                "yang-ext:mount/org-openroadm-pm:current-pm-list")
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()#["org-openroadm-device"]
     
     def get_portmapping(self):
         url = f"{self.baseurl}/config/transportpce-portmapping:network"
@@ -46,6 +52,11 @@ class Controller():
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()["nodes"][0]
         
+    def get_network(self):
+        url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-network"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()["network"][0]
+    
     def get_topology(self):
         url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology"
         response = requests.get(url, headers=self.headers, auth=self.auth)
@@ -282,6 +293,8 @@ class Controller():
         data = {"input": {
                     "src-type": "all"}}
         response = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
+        if response.status_code != requests.codes.ok:
+            return []
         return response.json()["output"]["spans"]
         
     def request_path_computation(self, node_id_1, node_id_2, request_id = "default_rid", service_name = "default_name"):
