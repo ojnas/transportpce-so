@@ -276,10 +276,10 @@ def click_node(click_data, n_clicks, xpdr_1, xpdr_2, srg_1, srg_2):
      Output('ocm-graph', 'style'),
      Output('ocm', 'figure')],
     [Input('ocm-button', 'n_clicks'),
+     Input('degrees', 'value'),
      Input('booster-or-pre', 'value')],
-    [State('degrees', 'value'),
-     State('topology-graph', 'style')])
-def show_ocm(n_clicks, amp, deg, cur):
+    [State('topology-graph', 'style')])
+def show_ocm(n_clicks, deg, amp, cur):
     if n_clicks is None:
         raise PreventUpdate
     
