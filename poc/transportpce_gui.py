@@ -293,7 +293,7 @@ def show_ocm(n_clicks, amp, deg, cur):
     deg_nbr = deg.split("-")[-1].lstrip("DEG")
     
     osa_data = tpce.get_ocm_data(node_id, deg_nbr, amp)
-    freq = [191.475 + 0.00625 * n for n in range(len(osa_data))]
+    freq = [191.478125 + 0.00625 * n for n in range(len(osa_data))]
     
     osa_trace = go.Scatter(x=freq, y=osa_data,
                            line=dict(color="#0d0887"), mode='lines')
@@ -301,7 +301,7 @@ def show_ocm(n_clicks, amp, deg, cur):
     fig = go.Figure(data=[osa_trace],
                     layout=go.Layout(showlegend=False,
                                      title=f"OCM data: {deg} {amp}",
-                                     xaxis_title='Frequency [Thz]',
+                                     xaxis_title='Frequency [THz]',
                                      yaxis_title='Power [dBm]'))
     
     return ({'width': '60%', 'display': 'inline-block'},
