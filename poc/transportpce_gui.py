@@ -24,19 +24,22 @@ fig = tg.figure_from_graph(G, port_mapping)
 
 xpdr_nodes = []
 srg_nodes = []
+deg_nodes = []
 supp_nodes = {}
 term_points = {}
 for n in topology["node"]:
+    supp_nodes[n["node-id"]] = n["supporting-node"][0]["node-ref"]
     if n["org-openroadm-common-network:node-type"] == "XPONDER":
         xpdr_nodes.append(n["node-id"])
-        supp_nodes[n["node-id"]] = n["supporting-node"][0]["node-ref"]
         term_points[n["node-id"]] = n["ietf-network-topology:termination-point"]
     elif n["org-openroadm-common-network:node-type"] == "SRG":
         srg_nodes.append(n["node-id"])
-        supp_nodes[n["node-id"]] = n["supporting-node"][0]["node-ref"]
         term_points[n["node-id"]] = n["ietf-network-topology:termination-point"]
+    elif n["org-openroadm-common-network:node-type"] == "DEGREE":
+        deg_nodes.append(n["node-id"])
 xpdr_nodes.sort()
 srg_nodes.sort()
+deg_nodes.sort()
 
 service_path_list = tpce.get_service_path_list()
 if service_path_list is None:
@@ -129,13 +132,36 @@ app.layout = html.Div([
         ],
         style={'width': '50%', 'display': 'inline-block'}),
         
-        html.Div(
-            dcc.Dropdown(
-                id='wl',
-                options = [{'label': f"Ch: {n}", 'value': n} for n in range(944,952)],
-                placeholder="Select wavelength channel (or leave empty for automatic assignment)"
-            ),
-        style={'width': '50%'}),
+        html.Div([
+            html.Div(
+                dcc.Dropdown(
+                    id='wl',
+                    options = [{'label': f"Ch: {n}", 'value': n} for n in range(944,952)],
+                    placeholder="Select wavelength channel (or leave empty for automatic assignment)"
+                ),
+            style={'width': '50%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
+            html.Div(
+                dcc.Dropdown(
+                    id='degrees',
+                    options = [{'label': n, 'value': n} for n in deg_nodes],
+                    placeholder="Select degree for OCM"
+                ),
+            style={'width': '30%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
+            html.Div(
+                dcc.RadioItems(
+                    id='booster-or-pre',
+                    options=[
+                        {'label': 'Booster', 'value': 'booster'},
+                        {'label': 'Pre-amp', 'value': 'preamp'},
+                    ],
+                    value='booster',
+                    #labelStyle={'display': 'inline-block'}
+                    ),
+                style={'width': '9%', 'margin-left': '1%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
+            html.Div(
+                html.Button('Show/Hide OCM', id='ocm-button'),
+            style={'width': '9%', 'margin-left': '1%', 'display': 'inline-block'}),
+        ]),
     ]),
     
     html.Div([
@@ -155,9 +181,7 @@ app.layout = html.Div([
             style={'display': 'inline-block'})],
         style={'display': 'inline-block', 'width': '60%'}),
         
-        html.Div(
-            html.Button('Delete Service', id='service-delete-button'),
-        style={'display': 'inline-block'}),
+        
         
         html.Div(
             html.Button('Clear All', id='clear-input-button'),
@@ -171,14 +195,20 @@ app.layout = html.Div([
     html.Div(dcc.Loading(children=[html.Div(id="subscribe-waiting")], type="default"),
     style={'display': 'inline-block'}),
 
-    html.Div(
-        dcc.Dropdown(
-            id='service-path-name',
-            placeholder="Select service path to show",
-            options=sp_options
-        ),
-        id='service-path-name-dd',
-    style={'width': '100%', 'display': 'inline-block'}),
+    html.Div([
+        html.Div(
+            dcc.Dropdown(
+                id='service-path-name',
+                placeholder="Select service path to show",
+                options=sp_options
+            ),
+            id='service-path-name-dd',
+        style={'width': '90%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
+    
+        html.Div(
+                html.Button('Delete Service', id='service-delete-button'),
+            style={'margin-left': '1%', 'display': 'inline-block'}),
+    ]),
     
     html.Div(
         dcc.Graph(
@@ -187,6 +217,14 @@ app.layout = html.Div([
             id='topology'
         ),
         id='topology-graph'),
+        
+    html.Div(
+        dcc.Graph(
+            style={'height': 1000},
+            id='ocm'
+        ),
+        id='ocm-graph',
+    style={'display': 'none'}),
     
     dcc.Store(id='path'),
     html.Div(id='requested-service-name', hidden=True),
@@ -198,7 +236,8 @@ app.layout = html.Div([
     [Output('xpdr-1', 'value'),
      Output('xpdr-2', 'value'),
      Output('srg-1', 'value'),
-     Output('srg-2', 'value')],
+     Output('srg-2', 'value'),
+     Output('degrees', 'value')],
     [Input('topology', 'clickData'),
      Input('clear-input-button', 'n_clicks')],
     [State('xpdr-1', 'value'),
@@ -209,7 +248,7 @@ def click_node(click_data, n_clicks, xpdr_1, xpdr_2, srg_1, srg_2):
     trig = dash.callback_context.triggered[0]
 
     if trig["prop_id"] == "clear-input-button.n_clicks":
-        return None, dash.no_update, None, dash.no_update
+        return None, dash.no_update, None, dash.no_update, None
         
     if trig["prop_id"] == "." or click_data is None:
         raise PreventUpdate
@@ -217,18 +256,58 @@ def click_node(click_data, n_clicks, xpdr_1, xpdr_2, srg_1, srg_2):
     node_id = click_data.get("points", [{}])[0].get("text")
     if node_id in xpdr_nodes:
         if xpdr_1 is None and xpdr_2 is None:
-            return node_id, dash.no_update, dash.no_update, dash.no_update
+            return node_id, dash.no_update, dash.no_update, dash.no_update, dash.no_update
         if xpdr_2 is None and xpdr_1 is not None:
-            return dash.no_update, node_id, dash.no_update, dash.no_update
+            return dash.no_update, node_id, dash.no_update, dash.no_update, dash.no_update
         
     if node_id in srg_nodes:       
         if srg_1 is None and srg_2 is None:
-            return dash.no_update, dash.no_update, node_id, dash.no_update
+            return dash.no_update, dash.no_update, node_id, dash.no_update, dash.no_update
         if srg_2 is None and srg_1 is not None:
-            return dash.no_update, dash.no_update, dash.no_update, node_id
+            return dash.no_update, dash.no_update, dash.no_update, node_id, dash.no_update
+            
+    if node_id in deg_nodes:
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, node_id
     
     raise PreventUpdate
 
+@app.callback(
+    [Output('topology-graph', 'style'),
+     Output('ocm-graph', 'style'),
+     Output('ocm', 'figure')],
+    [Input('ocm-button', 'n_clicks'),
+     Input('booster-or-pre', 'value')],
+    [State('degrees', 'value'),
+     State('topology-graph', 'style')])
+def show_ocm(n_clicks, amp, deg, cur):
+    if n_clicks is None:
+        raise PreventUpdate
+    
+    trig = dash.callback_context.triggered[0]
+    if trig["prop_id"] == "ocm-button.n_clicks" and (deg is None or cur is not None):
+        return (None,
+                {'display': 'none'},
+                dash.no_update)
+
+    node_id = supp_nodes[deg]
+    deg_nbr = deg.split("-")[-1].lstrip("DEG")
+    
+    osa_data = tpce.get_ocm_data(node_id, deg_nbr, amp)
+    freq = [191.475 + 0.00625 * n for n in range(len(osa_data))]
+    
+    osa_trace = go.Scatter(x=freq, y=osa_data,
+                           line=dict(color="#0d0887"), mode='lines')
+                            
+    fig = go.Figure(data=[osa_trace],
+                    layout=go.Layout(showlegend=False,
+                                     title=f"OCM data: {deg} {amp}",
+                                     xaxis_title='Frequency [Thz]',
+                                     yaxis_title='Power [dBm]'))
+    
+    return ({'width': '60%', 'display': 'inline-block'},
+        {'width': '40%', 'display': 'inline-block'},
+        fig)
+        
 @app.callback(
     [Output('topology', 'figure'),
      Output('ws-trigger', 'children'),

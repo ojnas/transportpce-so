@@ -24,6 +24,13 @@ class Controller():
         requests.put(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
         
     # some useful getters:    
+    def get_ocm_data(self, node_id, deg_nbr, amp):
+        url = (f"{self.baseurl}/operational/network-topology:network-topology/topology/topology-netconf/node/{node_id}/"
+                f"yang-ext:mount/dh_data_provider:dh_data_provider/openroadm/degree/{deg_nbr}/ocm/data/{amp}")
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        osa_data = json.loads(response.json()[amp]["osa"])["osaData"]
+        return osa_data#response.json()[amp]["osa"]
+    
     def get_config(self, node_id):
         url = (f"{self.baseurl}/config/network-topology:network-topology/topology/topology-netconf/node/{node_id}/"
                 "yang-ext:mount/org-openroadm-device:org-openroadm-device")
@@ -295,7 +302,10 @@ class Controller():
         response = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
         if response.status_code != requests.codes.ok:
             return []
-        return response.json()["output"]["spans"]
+        spans = response.json()["output"].get("spans")
+        if spans is None:
+            return []
+        return spans
         
     def request_path_computation(self, node_id_1, node_id_2, request_id = "default_rid", service_name = "default_name"):
         url = f"{self.baseurl}/operations/transportpce-pce:path-computation-request"
