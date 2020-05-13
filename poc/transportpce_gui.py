@@ -27,6 +27,7 @@ srg_nodes = []
 deg_nodes = []
 supp_nodes = {}
 term_points = {}
+conn_map_delete = set()
 for n in topology["node"]:
     supp_nodes[n["node-id"]] = n["supporting-node"][0]["node-ref"]
     if n["org-openroadm-common-network:node-type"] == "XPONDER":
@@ -37,15 +38,20 @@ for n in topology["node"]:
         term_points[n["node-id"]] = n["ietf-network-topology:termination-point"]
     elif n["org-openroadm-common-network:node-type"] == "DEGREE":
         deg_nodes.append(n["node-id"])
+        conn_map_delete.add(n["supporting-node"][0]["node-ref"])
 xpdr_nodes.sort()
 srg_nodes.sort()
 deg_nodes.sort()
+
+for n in conn_map_delete:
+    tpce.get_connection_map_delete_links(n)
 
 service_path_list = tpce.get_service_path_list()
 if service_path_list is None:
     sp_options = []
 else:
-    sp_options = [{'label': sp["service-path-name"], 'value': sp["service-path-name"]} for sp in service_path_list["service-paths"]]
+    sp_options = [{'label': sp["service-path-name"], 'value': sp["service-path-name"]}
+                    for sp in service_path_list["service-paths"]]
 
 def on_message(ws, message):
     notification = json.loads(message)
@@ -155,14 +161,34 @@ app.layout = html.Div([
                         {'label': 'Pre-amp', 'value': 'preamp'},
                     ],
                     value='booster',
-                    #labelStyle={'display': 'inline-block'}
+                    labelStyle={'display': 'inline-block'}
                     ),
-                style={'width': '9%', 'margin-left': '1%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
+                style={'margin-left': '1%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
             html.Div(
                 html.Button('Show/Hide OCM', id='ocm-button'),
-            style={'width': '9%', 'margin-left': '1%', 'display': 'inline-block'}),
+            style={'float': 'right', 'display': 'inline-block'}),
         ]),
     ]),
+    
+    html.Div([
+        html.Div(
+            dcc.Dropdown(
+                id='service-path-name',
+                placeholder="Select service path to show",
+                options=sp_options
+            ),
+            id='service-path-name-dd',
+        style={'width': '80%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
+    
+        html.Div(
+                html.Button('Delete Service', id='service-delete-button'),
+            style={'display': 'inline-block'}),
+            
+        html.Div(
+            html.Button('Clear All', id='clear-input-button'),
+        style={'display': 'inline-block', 'float': 'right'}),
+    ],
+    style={'margin-top': '5px'}),
     
     html.Div([
         html.Div([
@@ -178,37 +204,20 @@ app.layout = html.Div([
                         ],
                         value="false",
                         labelStyle={'display': 'inline-block'}),
-            style={'display': 'inline-block'})],
-        style={'display': 'inline-block', 'width': '60%'}),
-        
-        
+            style={'margin-left': '1%', 'display': 'inline-block'}),
+            
+            html.Div(dcc.Loading(children=[html.Div(id="subscribe-waiting")], type="default"),
+            style={'margin-left': '3%', 'display': 'inline-block'}),
+            
+            html.Div(html.P(id='status-text'), id='status-text-div',
+            style={'margin-left': '3%', 'display': 'inline-block', 'text-align': 'center'})],      
+        style={'width': '80%', 'display': 'inline-block'}),
         
         html.Div(
-            html.Button('Clear All', id='clear-input-button'),
+            html.Button('Update Spanloss', id='spanloss-button'),
         style={'display': 'inline-block', 'float': 'right'}),
     ],
-    style={'width': '50%', 'display': 'inline-block'}),
-            
-    html.Div(html.P(id='status-text'), id='status-text-div',
-    style={'width': '40%', 'display': 'inline-block', 'text-align': 'center'}),
-    
-    html.Div(dcc.Loading(children=[html.Div(id="subscribe-waiting")], type="default"),
-    style={'display': 'inline-block'}),
-
-    html.Div([
-        html.Div(
-            dcc.Dropdown(
-                id='service-path-name',
-                placeholder="Select service path to show",
-                options=sp_options
-            ),
-            id='service-path-name-dd',
-        style={'width': '90%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
-    
-        html.Div(
-                html.Button('Delete Service', id='service-delete-button'),
-            style={'margin-left': '1%', 'display': 'inline-block'}),
-    ]),
+    style={'margin-top': '5px'}),
     
     html.Div(
         dcc.Graph(
@@ -313,10 +322,11 @@ def show_ocm(n_clicks, deg, amp, cur):
      Output('ws-trigger', 'children'),
      Output('graph', 'children')],
     [Input('service-path-name', 'value'),
-     Input('status-text', 'children')],
+     Input('status-text', 'children'),
+     Input('spanloss-button', 'n_clicks')],
     [State('path', 'data'),
      State('graph', 'children')])
-def update_graph(service_path_name, status_text, path, G_old):
+def update_graph(service_path_name, status_text, n_clicks, path, G_old):
     trig = dash.callback_context.triggered[0]
 
     if trig["prop_id"] == ".":
@@ -325,6 +335,10 @@ def update_graph(service_path_name, status_text, path, G_old):
     if trig["prop_id"] == "status-text.children" and status_text == "Service deletion in progress":
         return dash.no_update, 2, dash.no_update
 
+    if trig["prop_id"] == "spanloss-button.n_clicks":
+        spans = tpce.measure_and_add_oms_spanloss()
+        #print(json.dumps(spans, indent = 4))
+    
     if G_old is not None:
         G_old = nx.readwrite.json_graph.jit_graph(G_old, create_using=nx.DiGraph())
         
@@ -345,7 +359,7 @@ def update_graph(service_path_name, status_text, path, G_old):
         path_trace = tg.trace_from_service_path(path, G)
         fig.add_trace(path_trace)
         
-    if status_text == "Service setup in progress":
+    if trig["prop_id"] == "status-text.children" and status_text == "Service setup in progress":
         return fig, 1, nx.readwrite.json_graph.jit_data(G)
         
     return fig, None, nx.readwrite.json_graph.jit_data(G)
@@ -552,7 +566,12 @@ def create_or_delete_service(n_clicks_request, n_clicks_delete, clear_trigger, x
         ws_loc = tpce.subscribe_pce_result()["location"]
         ws = websocket.create_connection(ws_loc)
     
-    response = tpce.provision_service(node_1, node_2, 961-wl, path_computation_only, service_name)
+    if wl is None:
+        wl = list(range(10,18))
+    else:
+        wl = 961 - wl
+    
+    response = tpce.provision_service(node_1, node_2, wl, path_computation_only, service_name)
     status = response["configuration-response-common"]["response-message"]
     
     if status == "PCE calculation in progress":
@@ -575,8 +594,8 @@ def create_or_delete_service(n_clicks_request, n_clicks_delete, clear_trigger, x
         topology = tpce.get_topology()
         osnr_atoz, gsnr_atoz = calculate_gsnr(computed_path, topology, version="so")
         osnr_ztoa, gsnr_ztoa = calculate_gsnr(computed_path_ztoa, topology, version="so")
-        status_text = ["Path available with wavelength Ch: " + str(961-atoz_direction['aToZ-wavelength-number']), html.Br(),
-                       f"1 -> 2: OSNR = {osnr_atoz}, GSNR = {gsnr_atoz} | 2 -> 1: OSNR = {osnr_ztoa}, GSNR = {gsnr_ztoa}"]
+        status_text = ("Path available with wavelength Ch: " + str(961-atoz_direction['aToZ-wavelength-number']) +
+                       f" | 1 -> 2: OSNR = {osnr_atoz}, GSNR = {gsnr_atoz} | 2 -> 1: OSNR = {osnr_ztoa}, GSNR = {gsnr_ztoa}")
     else:
         status_text = status
         
