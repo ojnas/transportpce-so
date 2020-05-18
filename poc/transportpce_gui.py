@@ -19,8 +19,6 @@ spans = tpce.measure_and_add_oms_spanloss()
 
 port_mapping = tpce.get_portmapping()
 topology = tpce.get_topology()
-G = tg.graph_from_topology(topology)
-fig = tg.figure_from_graph(G, port_mapping)
 
 xpdr_nodes = []
 srg_nodes = []
@@ -46,13 +44,6 @@ deg_nodes.sort()
 for n in conn_map_delete:
     tpce.get_connection_map_delete_links(n)
 
-service_path_list = tpce.get_service_path_list()
-if service_path_list is None:
-    sp_options = []
-else:
-    sp_options = [{'label': sp["service-path-name"], 'value': sp["service-path-name"]}
-                    for sp in service_path_list["service-paths"]]
-
 def on_message(ws, message):
     notification = json.loads(message)
     print(json.dumps(notification, indent = 4))
@@ -65,7 +56,7 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 #external_stylesheets = ['https://adi.tilde.institute/default.css/default.css']
 #external_stylesheets = ['https://andybrewer.github.io/mvp/mvp.css']
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets, prevent_initial_callbacks=True)
 
 app.layout = html.Div([
     #html.H1("OpenROADM controller"),
@@ -174,8 +165,7 @@ app.layout = html.Div([
         html.Div(
             dcc.Dropdown(
                 id='service-path-name',
-                placeholder="Select service path to show",
-                options=sp_options
+                placeholder="Select service path to show"
             ),
             id='service-path-name-dd',
         style={'width': '80%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
@@ -221,7 +211,6 @@ app.layout = html.Div([
     
     html.Div(
         dcc.Graph(
-            figure = fig,
             style={'height': 1000},
             id='topology'
         ),
@@ -325,12 +314,10 @@ def show_ocm(n_clicks, deg, amp, cur):
      Input('status-text', 'children'),
      Input('spanloss-button', 'n_clicks')],
     [State('path', 'data'),
-     State('graph', 'children')])
+     State('graph', 'children')],
+     prevent_initial_call=False)
 def update_graph(service_path_name, status_text, n_clicks, path, G_old):
     trig = dash.callback_context.triggered[0]
-
-    if trig["prop_id"] == ".":
-        raise PreventUpdate
     
     if trig["prop_id"] == "status-text.children" and status_text == "Service deletion in progress":
         return dash.no_update, 2, dash.no_update
