@@ -30,7 +30,7 @@ public final class OlmUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(OlmUtils.class);
     private static long DATABROKER_READ_TIMEOUT_SECONDS = 120;
-    public static final long OLM_TIMER_1 = 30000; //#FUNCTESTVAL= 3000;
+    public static final long OLM_TIMER_1 = 45000; //#FUNCTESTVAL= 3000;
     public static final long OLM_TIMER_2 = 10000;  //#FUNCTESTVAL= 2000;
 
     /**
