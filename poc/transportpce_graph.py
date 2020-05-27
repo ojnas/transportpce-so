@@ -4,6 +4,9 @@ import yaml
 from copy import deepcopy
 import networkx as nx
 import plotly.graph_objects as go
+import plotly.express as px
+
+colorseq = px.colors.qualitative.Alphabet
 
 def graph_from_topology(topology, G_old = None):
     
@@ -54,10 +57,10 @@ def figure_from_graph(G, port_mapping = None):
         seen_edges.append(edge)
 
     edge_trace = go.Scatter(x=edge_x, y=edge_y,
-                            line=dict(color="#fb9f3a"), mode="lines", hoverinfo="skip")
+                            line=dict(color=colorseq[14]), mode="lines", hoverinfo="skip")
         
     edge_hover_trace = go.Scatter(x=edge_hover_x, y=edge_hover_y,
-                                    marker=dict(color="#fb9f3a"), mode="markers", hovertext=edge_hovertext, hoverinfo="text")
+                                    marker=dict(color=colorseq[14]), mode="markers", hovertext=edge_hovertext, hoverinfo="text")
     
     if port_mapping is not None:
         pm_dict = {}
@@ -65,62 +68,110 @@ def figure_from_graph(G, port_mapping = None):
             pm.pop("cp-to-degree", None)
             pm_dict[pm["node-id"]] = pm
     
-    node_hover_x = []
-    node_hover_y = []
-    node_hovertext =[]
+    node_hover_deg_x = []
+    node_hover_deg_y = []
+    node_hover_srg1_x = []
+    node_hover_srg1_y = []
+    node_hover_srg2_x = []
+    node_hover_srg2_y = []
+    node_hover_xpdr_x = []
+    node_hover_xpdr_y = []
+    node_hovertext_deg = []
+    node_hovertext_srg1 = []
+    node_hovertext_srg2 = []
+    node_hovertext_xpdr = []
     node_annotations = []
-    node_text = []
+    node_text_deg = []
+    node_text_srg1 = []
+    node_text_srg2 = []
+    node_text_xpdr = []
     for node in G.nodes():
-        node_text.append(node)
         x, y = G.nodes[node]["pos"]
-        node_hover_x.append(x)
-        node_hover_y.append(y)
-        node_annotations.append(dict(ax=x, ay=y, x=x, y=y, xref="x", yref="y", text=node,
-                                    bgcolor="#0d0887", borderpad=3, font=dict(color="white")))
-        
         node_info = deepcopy(G.nodes[node]["node_info"])
         tps = node_info["ietf-network-topology:termination-point"]     
         node_type = node_info["org-openroadm-common-network:node-type"]
         
+        node_info["ietf-network-topology:termination-point"].sort(key = lambda x: x["tp-id"])
+        
         if node_type == "DEGREE":
+            node_text_deg.append(node)
+            node_hover_deg_x.append(x)
+            node_hover_deg_y.append(y)
+            node_annotations.append(dict(ax=x, ay=y, x=x, y=y, xref="x", yref="y", text=node,
+                                    bgcolor=colorseq[13], borderpad=3, font=dict(color="white")))
             node_info["ietf-network-topology:termination-point"] = [tp for tp in tps if tp["org-openroadm-common-network:tp-type"] == "DEGREE-TXRX-TTP"]
             available_wavelengths = [wl["index"] for wl in node_info["org-openroadm-network-topology:degree-attributes"]["available-wavelengths"]]
             available_wavelengths.sort()  
             node_info["available-wavelengths"] = str(available_wavelengths)[1:-1]
             node_info.pop("org-openroadm-network-topology:degree-attributes")
         elif node_type == "SRG":
+            srg_nbr = int(node.split("-")[-1].lstrip("SRG"))
+            if (srg_nbr % 2) == 0:
+                node_text_srg1.append(node)
+                node_hover_srg1_x.append(x)
+                node_hover_srg1_y.append(y)
+                node_annotations.append(dict(ax=x, ay=y, x=x, y=y, xref="x", yref="y", text=node,
+                                        bgcolor=colorseq[5], borderpad=3, font=dict(color="white")))
+            else:
+                node_text_srg2.append(node)
+                node_hover_srg2_x.append(x)
+                node_hover_srg2_y.append(y)
+                node_annotations.append(dict(ax=x, ay=y, x=x, y=y, xref="x", yref="y", text=node,
+                                        bgcolor=colorseq[10], borderpad=3, font=dict(color="white")))
             node_info["ietf-network-topology:termination-point"] = [tp for tp in tps if tp["org-openroadm-common-network:tp-type"] == "SRG-TXRX-PP"]
             available_wavelengths = [wl["index"] for wl in node_info["org-openroadm-network-topology:srg-attributes"]["available-wavelengths"]]
             available_wavelengths.sort()       
             node_info["available-wavelengths"] = str(available_wavelengths)[1:-1]
             node_info.pop("org-openroadm-network-topology:srg-attributes")
         elif node_type == "XPONDER":
+            node_text_xpdr.append(node)
+            node_hover_xpdr_x.append(x)
+            node_hover_xpdr_y.append(y)
+            node_annotations.append(dict(ax=x, ay=y, x=x, y=y, xref="x", yref="y", text=node,
+                                    bgcolor=colorseq[3], borderpad=3, font=dict(color="white")))
             node_info["ietf-network-topology:termination-point"] = [tp for tp in tps if tp["org-openroadm-common-network:tp-type"] == "XPONDER-NETWORK"]
         
         for tp in tps:
             tp.pop("org-openroadm-common-network:tp-type")
-            
-        node_info["ietf-network-topology:termination-point"].sort(key = lambda x: x["tp-id"])
         
         if port_mapping is not None:
             pm_info = deepcopy(pm_dict[node_info["supporting-node"][0]["node-ref"]])
             node_info.pop("supporting-node")
             mapping = pm_info.pop("mapping")
-            if node_info["org-openroadm-common-network:node-type"] in ("SRG", "DEGREE"):
+            if node_type in ("SRG", "DEGREE"):
                 mapping = [m for m in mapping if node.split("-")[-1] == m["logical-connection-point"].split("-")[0]]
             for m in mapping:
                 m.pop("port-direction", None)
-            node_hovertext.append("<br>".join(["Node:", yaml.dump(node_info).replace("\n", "<br>"),
+            node_hovertext = ("<br>".join(["Node:", yaml.dump(node_info).replace("\n", "<br>"),
                                     "Mapping:", yaml.dump(mapping).replace("\n", "<br>"),
                                     "Supporting node:", yaml.dump(pm_info).replace("\n", "<br>")]))
         else:
-            node_hovertext.append("<br>".join(["Node:", yaml.dump(node_info).replace("\n", "<br>")]))
+            node_hovertext = ("<br>".join(["Node:", yaml.dump(node_info).replace("\n", "<br>")]))
+            
+        if node_type == "DEGREE":
+            node_hovertext_deg.append(node_hovertext)
+        elif node_type == "SRG":
+            if (srg_nbr % 2) == 0:
+                node_hovertext_srg1.append(node_hovertext)
+            else:
+                node_hovertext_srg2.append(node_hovertext)
+        elif node_type == "XPONDER":
+            node_hovertext_xpdr.append(node_hovertext)
         
-    node_hover_trace = go.Scatter(x=node_hover_x, y=node_hover_y,
-                                    marker=dict(color="#0d0887"), text=node_text, hovertext=node_hovertext, hoverinfo="text", mode="markers")
+    node_hover_trace_deg = go.Scatter(x=node_hover_deg_x, y=node_hover_deg_y, text=node_text_deg,
+                                      marker=dict(color=colorseq[13]), hovertext=node_hovertext_deg, hoverinfo="text", mode="markers")
+                                      
+    node_hover_trace_srg1 = go.Scatter(x=node_hover_srg1_x, y=node_hover_srg1_y, text=node_text_srg1,
+                                       marker=dict(color=colorseq[5]), hovertext=node_hovertext_srg1, hoverinfo="text", mode="markers")
+                                       
+    node_hover_trace_srg2 = go.Scatter(x=node_hover_srg2_x, y=node_hover_srg2_y, text=node_text_srg2,
+                                       marker=dict(color=colorseq[10]), hovertext=node_hovertext_srg2, hoverinfo="text", mode="markers")
+                                       
+    node_hover_trace_xpdr = go.Scatter(x=node_hover_xpdr_x, y=node_hover_xpdr_y, text=node_text_xpdr,
+                                       marker=dict(color=colorseq[3]), hovertext=node_hovertext_xpdr, hoverinfo="text", mode="markers")
 
-    return go.Figure(data=[edge_trace, edge_hover_trace, node_hover_trace],
-                    layout=go.Layout(showlegend=False, annotations = node_annotations, clickmode="event+select", 
+    return go.Figure(data=[edge_trace, edge_hover_trace, node_hover_trace_deg, node_hover_trace_srg1, node_hover_trace_srg2, node_hover_trace_xpdr],
+                    layout=go.Layout(showlegend=False, annotations = node_annotations, clickmode="event", 
                     margin=dict(l=25, r=25, t=25, b=25),
                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
@@ -139,7 +190,7 @@ def trace_from_service_path(service_path_atoz, G):
         path_y.append(y)
         
     return go.Scatter(x=path_x, y=path_y,
-                        line=dict(color="#bd3786", width=4), mode="lines", hoverinfo="skip")
+                        line=dict(color=colorseq[17], width=4), mode="lines", hoverinfo="skip")
                     
 if __name__ == '__main__':
     from transportpce import Controller
