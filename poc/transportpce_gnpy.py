@@ -20,7 +20,7 @@ def calculate_gsnr(path, topology, version="so"):
     spacing = 100e9
     roll_off = 0.15
     baud_rate = 32e9
-    tx_osnr = 33
+    tx_osnr = 37
     
     fiber_types = {
                     "smf": {"dispersion": 16.7e-06, "gamma": 1.27e-3},
