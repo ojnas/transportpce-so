@@ -41,26 +41,45 @@ def figure_from_graph(G, port_mapping = None):
     edge_hover_x = []
     edge_hover_y = []
     edge_hovertext = []
+    edge_r2r_x = []
+    edge_r2r_y = []
+    edge_hover_r2r_x = []
+    edge_hover_r2r_y = []
+    edge_hovertext_r2r = []
     seen_edges = []
     for edge in G.edges():
         opposite_edge = (edge[1], edge[0])
         if opposite_edge in seen_edges:
             continue
         x0, y0 = G.nodes[edge[0]]["pos"]
-        x1, y1 = G.nodes[edge[1]]["pos"]   
-        edge_x.extend([x0, x1, None])
-        edge_y.extend([y0, y1, None])
-        edge_hover_x.append((x0 + x1) / 2)
-        edge_hover_y.append((y0 + y1) / 2)   
-        edge_hovertext.append("<br>".join([f"Direction {edge[0]} -> {edge[1]}:", yaml.dump(G.edges[edge]["link_info"]).replace("\n", "<br>"),
-                                f"Direction {edge[1]} -> {edge[0]}:", yaml.dump(G.edges[opposite_edge]["link_info"]).replace("\n", "<br>")]))
+        x1, y1 = G.nodes[edge[1]]["pos"] 
         seen_edges.append(edge)
+        if G.edges[edge]["link_info"]["org-openroadm-common-network:link-type"] == "ROADM-TO-ROADM":
+            edge_r2r_x.extend([x0, x1, None])
+            edge_r2r_y.extend([y0, y1, None]) 
+            edge_hover_r2r_x.append((x0 + x1) / 2)
+            edge_hover_r2r_y.append((y0 + y1) / 2)   
+            edge_hovertext_r2r.append("<br>".join([f"Direction {edge[0]} -> {edge[1]}:", yaml.dump(G.edges[edge]["link_info"]).replace("\n", "<br>"),
+                                    f"Direction {edge[1]} -> {edge[0]}:", yaml.dump(G.edges[opposite_edge]["link_info"]).replace("\n", "<br>")]))
+        else:      
+            edge_x.extend([x0, x1, None])
+            edge_y.extend([y0, y1, None]) 
+            edge_hover_x.append((x0 + x1) / 2)
+            edge_hover_y.append((y0 + y1) / 2)   
+            edge_hovertext.append("<br>".join([f"Direction {edge[0]} -> {edge[1]}:", yaml.dump(G.edges[edge]["link_info"]).replace("\n", "<br>"),
+                                    f"Direction {edge[1]} -> {edge[0]}:", yaml.dump(G.edges[opposite_edge]["link_info"]).replace("\n", "<br>")]))
 
     edge_trace = go.Scatter(x=edge_x, y=edge_y,
-                            line=dict(color=colorseq[14]), mode="lines", hoverinfo="skip")
+                            line=dict(color=colorseq[19]), mode="lines", hoverinfo="skip")
         
     edge_hover_trace = go.Scatter(x=edge_hover_x, y=edge_hover_y,
-                                    marker=dict(color=colorseq[14]), mode="markers", hovertext=edge_hovertext, hoverinfo="text")
+                                  marker=dict(color=colorseq[19]), mode="markers", hovertext=edge_hovertext, hoverinfo="text")
+                                    
+    edge_trace_r2r = go.Scatter(x=edge_r2r_x, y=edge_r2r_y,
+                                line=dict(color=colorseq[14]), mode="lines", hoverinfo="skip")
+        
+    edge_hover_trace_r2r = go.Scatter(x=edge_hover_r2r_x, y=edge_hover_r2r_y,
+                                      marker=dict(color=colorseq[14]), mode="markers", hovertext=edge_hovertext, hoverinfo="text")
     
     if port_mapping is not None:
         pm_dict = {}
@@ -170,11 +189,12 @@ def figure_from_graph(G, port_mapping = None):
     node_hover_trace_xpdr = go.Scatter(x=node_hover_xpdr_x, y=node_hover_xpdr_y, text=node_text_xpdr,
                                        marker=dict(color=colorseq[3]), hovertext=node_hovertext_xpdr, hoverinfo="text", mode="markers")
 
-    return go.Figure(data=[edge_trace, edge_hover_trace, node_hover_trace_deg, node_hover_trace_srg1, node_hover_trace_srg2, node_hover_trace_xpdr],
-                    layout=go.Layout(showlegend=False, annotations = node_annotations, clickmode="event", 
-                    margin=dict(l=25, r=25, t=25, b=25),
-                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
+    return go.Figure(data=[edge_trace, edge_trace_r2r, edge_hover_trace, edge_hover_trace_r2r,
+                           node_hover_trace_deg, node_hover_trace_srg1, node_hover_trace_srg2, node_hover_trace_xpdr],
+                           layout=go.Layout(showlegend=False, annotations = node_annotations, clickmode="event", 
+                           margin=dict(l=25, r=25, t=25, b=25),
+                           xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                           yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
 
 def trace_from_service_path(service_path_atoz, G):
     
