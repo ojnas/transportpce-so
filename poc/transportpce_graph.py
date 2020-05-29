@@ -79,7 +79,7 @@ def figure_from_graph(G, port_mapping = None):
                                 line=dict(color=colorseq[14]), mode="lines", hoverinfo="skip")
         
     edge_hover_trace_r2r = go.Scatter(x=edge_hover_r2r_x, y=edge_hover_r2r_y,
-                                      marker=dict(color=colorseq[14]), mode="markers", hovertext=edge_hovertext, hoverinfo="text")
+                                      marker=dict(color=colorseq[14]), mode="markers", hovertext=edge_hovertext_r2r, hoverinfo="text")
     
     if port_mapping is not None:
         pm_dict = {}
