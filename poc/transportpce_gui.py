@@ -168,11 +168,15 @@ app.layout = html.Div([
                 placeholder="Select service path to show"
             ),
             id='service-path-name-dd',
-        style={'width': '80%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
+        style={'width': '74%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
     
+        html.P(id='service-channel',
+        style={'width': '6%', 'text-align': 'center', 'display': 'inline-block'}),
+            
+        
         html.Div(
-                html.Button('Delete Service', id='service-delete-button'),
-            style={'display': 'inline-block'}),
+            html.Button('Delete Service', id='service-delete-button'),
+        style={'display': 'inline-block'}),
             
         html.Div(
             html.Button('Clear All', id='clear-input-button'),
@@ -309,7 +313,8 @@ def show_ocm(n_clicks, deg, amp, cur):
 @app.callback(
     [Output('topology', 'figure'),
      Output('ws-trigger', 'children'),
-     Output('graph', 'children')],
+     Output('graph', 'children'),
+     Output('service-channel', 'children')],
     [Input('service-path-name', 'value'),
      Input('status-text', 'children'),
      Input('spanloss-button', 'n_clicks')],
@@ -320,7 +325,7 @@ def update_graph(service_path_name, status_text, n_clicks, path, G_old):
     trig = dash.callback_context.triggered[0]
     
     if trig["prop_id"] == "status-text.children" and status_text == "Service deletion in progress":
-        return dash.no_update, 2, dash.no_update
+        return dash.no_update, 2, dash.no_update, dash.no_update
 
     if trig["prop_id"] == "spanloss-button.n_clicks":
         spans = tpce.measure_and_add_oms_spanloss()
@@ -335,21 +340,24 @@ def update_graph(service_path_name, status_text, n_clicks, path, G_old):
     
     if trig["prop_id"] == "service-path-name.value":
         if service_path_name is None:
-            return fig, dash.no_update, nx.readwrite.json_graph.jit_data(G)
+            return fig, dash.no_update, nx.readwrite.json_graph.jit_data(G), None
         
         sp = tpce.get_service_path(service_path_name)
+        wl = sp['path-description']["aToZ-direction"]['aToZ-wavelength-number']
+        #wl = 
+        print(sp)
         path_trace = tg.trace_from_service_path(sp["path-description"]["aToZ-direction"]["aToZ"], G)
         fig.add_trace(path_trace)
-        return fig, dash.no_update, nx.readwrite.json_graph.jit_data(G)
+        return fig, dash.no_update, nx.readwrite.json_graph.jit_data(G), 'Ch: ' + str(961 - wl)
   
     if path is not None:
         path_trace = tg.trace_from_service_path(path, G)
         fig.add_trace(path_trace)
         
     if trig["prop_id"] == "status-text.children" and status_text == "Service setup in progress":
-        return fig, 1, nx.readwrite.json_graph.jit_data(G)
+        return fig, 1, nx.readwrite.json_graph.jit_data(G), dash.no_update
         
-    return fig, None, nx.readwrite.json_graph.jit_data(G)
+    return fig, None, nx.readwrite.json_graph.jit_data(G), dash.no_update
 
 @app.callback(
      Output('wl', 'value'),
@@ -669,4 +677,4 @@ if __name__ == '__main__':
     ws = websocket.WebSocketApp(ws_loc, on_message = on_message, on_error = on_error)
     ws_thread = Thread(target = ws.run_forever, daemon = True)
     ws_thread.start()
-    app.run_server(debug=False)
+    app.run_server(debug=True)
