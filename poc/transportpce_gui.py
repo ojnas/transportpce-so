@@ -343,12 +343,11 @@ def update_graph(service_path_name, status_text, n_clicks, path, G_old):
             return fig, dash.no_update, nx.readwrite.json_graph.jit_data(G), None
         
         sp = tpce.get_service_path(service_path_name)
-        wl = sp['path-description']["aToZ-direction"]['aToZ-wavelength-number']
-        #wl = 
-        print(sp)
-        path_trace = tg.trace_from_service_path(sp["path-description"]["aToZ-direction"]["aToZ"], G)
+        atoz_direction = sp["path-description"]["aToZ-direction"]
+        path_trace = tg.trace_from_service_path(atoz_direction["aToZ"], G)
         fig.add_trace(path_trace)
-        return fig, dash.no_update, nx.readwrite.json_graph.jit_data(G), 'Ch: ' + str(961 - wl)
+        return (fig, dash.no_update, nx.readwrite.json_graph.jit_data(G),
+                'Ch: ' + str(961 - atoz_direction['aToZ-wavelength-number']))
   
     if path is not None:
         path_trace = tg.trace_from_service_path(path, G)
