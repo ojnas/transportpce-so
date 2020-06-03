@@ -374,7 +374,7 @@ class Controller():
                 spans.append({"length": length, "link-id": link_id})
                 span_data = link["org-openroadm-network-topology:OMS-attributes"].get("span", {})
                 link_concat = span_data.get("link-concatenation")
-                if link_concat None:
+                if link_concat is None:
                     link_concat = [{"SRLG-Id": 0,
                                     "fiber-type": "smf",
                                     "SRLG-length": length}]
