@@ -18,7 +18,7 @@ def graph_from_topology(topology, G_old = None):
     for link in topology["ietf-network-topology:link"]:
         if link["org-openroadm-common-network:link-type"] == "ROADM-TO-ROADM":          
             length = link.get("org-openroadm-network-topology:OMS-attributes", {}).get("span", {}).get("link-concatenation", [{}])[0].get("SRLG-length")
-            weight = length / 5000 if length is not None else 10
+            weight = length / 10000 if length is not None else 10
         elif link["org-openroadm-common-network:link-type"] == "EXPRESS-LINK":
             weight = 1.5
         else:
