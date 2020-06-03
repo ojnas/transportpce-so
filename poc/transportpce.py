@@ -36,8 +36,8 @@ class Controller():
                 f"yang-ext:mount/dh_data_provider:dh_data_provider/openroadm/degree/{deg_nbr}/oms/span")
         response = requests.get(url, headers=self.headers, auth=self.auth)
         if response.status_code != requests.codes.ok:
-            return 10000
-        return response.json().get("span", {}).get("srlg-length", 10000)
+            return None
+        return response.json().get("span", {}).get("srlg-length")
     
     def get_config(self, node_id):
         url = (f"{self.baseurl}/config/network-topology:network-topology/topology/topology-netconf/node/{node_id}/"
@@ -374,6 +374,10 @@ class Controller():
                 spans.append({"length": length, "link-id": link_id})
                 span_data = link["org-openroadm-network-topology:OMS-attributes"].get("span", {})
                 link_concat = span_data.get("link-concatenation")
+                if length is None:
+                    if link_concat is not None:
+                        continue
+                    length = 10000
                 if link_concat is None:
                     link_concat = [{"SRLG-Id": 0,
                                     "fiber-type": "smf",
