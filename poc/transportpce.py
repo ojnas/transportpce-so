@@ -29,7 +29,15 @@ class Controller():
                 f"yang-ext:mount/dh_data_provider:dh_data_provider/openroadm/degree/{deg_nbr}/ocm/data/{amp}")
         response = requests.get(url, headers=self.headers, auth=self.auth)
         osa_data = json.loads(response.json()[amp]["osa"])["osaData"]
-        return osa_data#response.json()[amp]["osa"]
+        return osa_data
+    
+    def get_fiber_length(self, node_id, deg_nbr):
+        url = (f"{self.baseurl}/operational/network-topology:network-topology/topology/topology-netconf/node/{node_id}/"
+                f"yang-ext:mount/dh_data_provider:dh_data_provider/openroadm/degree/{deg_nbr}/oms/span")
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        if response.status_code != requests.codes.ok:
+            return 10000
+        return response.json().get("span", {}).get("srlg-length", 10000)
     
     def get_config(self, node_id):
         url = (f"{self.baseurl}/config/network-topology:network-topology/topology/topology-netconf/node/{node_id}/"
@@ -47,7 +55,7 @@ class Controller():
         url = (f"{self.baseurl}/operational/network-topology:network-topology/topology/topology-netconf/node/{node_id}/"
                 "yang-ext:mount/org-openroadm-pm:current-pm-list")
         response = requests.get(url, headers=self.headers, auth=self.auth)
-        return response.json()#["org-openroadm-device"]
+        return response.json()
     
     def get_portmapping(self):
         url = f"{self.baseurl}/config/transportpce-portmapping:network"
@@ -117,6 +125,12 @@ class Controller():
         pps = [tp for tp in response.json()["node"][0]["ietf-network-topology:termination-point"] if
                 tp["org-openroadm-common-network:tp-type"] == "SRG-TXRX-PP"]
         return pps
+        
+    def get_oms_span(self, link):
+        url = (f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link}/"
+               "org-openroadm-network-topology:OMS-attributes")
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()["org-openroadm-network-topology:OMS-attributes"].get("span", {})
     
     # subscribe to notifications on changes of service status:
     def subscribe_service_status(self, service_name):
@@ -209,7 +223,7 @@ class Controller():
         url = (f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/node/{srg_id}/"
                 f"ietf-network-topology:termination-point/{tp_id}/org-openroadm-network-topology:pp-attributes")
         requests.delete(url, headers=self.headers, auth=self.auth)
-                
+
     # add OMS information to a link in the topology:
     def add_oms_attributes(self, link, spanloss, fiber_type="smf", length="10000"):
         url = (f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link}/"
@@ -220,6 +234,12 @@ class Controller():
                         "SRLG-Id": 0,
                         "fiber-type": fiber_type,
                         "SRLG-length": length}]}}
+        requests.put(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
+        
+    def add_oms_span(self, link, span):
+        url = (f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology/ietf-network-topology:link/{link}/"
+               "org-openroadm-network-topology:OMS-attributes/span")
+        data = {"span": span}
         requests.put(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
         
     # delete link from topology to limit connectivity:
@@ -331,7 +351,38 @@ class Controller():
     def measure_and_add_oms_spanloss(self):
         spans = self.measure_spanloss()
         for span in spans:
-            self.add_oms_attributes(span["link-id"], float(span["spanloss"]))
+            link = span["link-id"]
+            span_data = self.get_oms_span(link)
+            span_data["spanloss-current"] = float(span["spanloss"])
+            self.add_oms_span(link, span_data)
+            #self.add_oms_attributes(span["link-id"], float(span["spanloss"]))
+        return spans
+    
+    # measure fiber length for all ROADM-to-ROADM links and update OMS information in topology based on results:
+    def measure_and_add_oms_length(self):
+        topology = self.get_topology()
+        supp_nodes = {n["node-id"]: n["supporting-node"][0]["node-ref"]
+                      for n in topology["node"] if n["org-openroadm-common-network:node-type"] == "DEGREE"}
+        spans = []
+        for link in topology["ietf-network-topology:link"]:
+            if link["org-openroadm-common-network:link-type"] == "ROADM-TO-ROADM":
+                source = link["source"]["source-node"]
+                node_id = supp_nodes[source]
+                deg_nbr = source.split("-")[-1].lstrip("DEG")
+                length = self.get_fiber_length(node_id, deg_nbr)
+                link_id = link["link-id"]
+                spans.append({"length": length, "link-id": link_id})
+                span_data = link["org-openroadm-network-topology:OMS-attributes"].get("span", {})
+                link_concat = span_data.get("link-concatenation")
+                if link_concat is None:
+                    link_concat = [{"SRLG-Id": 0,
+                                    "fiber-type": "smf",
+                                    "SRLG-length": length}]
+                else:
+                    link_concat = [link_concat[0].update({"SRLG-length": length})]
+                span_data["link-concatenation"] = link_concat
+                self.add_oms_span(link_id, span_data)
+                
         return spans
     
     # OpenROADM service model service-create RPC:

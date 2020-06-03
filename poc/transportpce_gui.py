@@ -15,6 +15,7 @@ import networkx as nx
 tpce = Controller()
 
 spans = tpce.measure_and_add_oms_spanloss()
+spans = tpce.measure_and_add_oms_length()
 #print(json.dumps(spans, indent = 4))
 
 port_mapping = tpce.get_portmapping()
@@ -208,7 +209,7 @@ app.layout = html.Div([
         style={'width': '80%', 'display': 'inline-block'}),
         
         html.Div(
-            html.Button('Update Spanloss', id='spanloss-button'),
+            html.Button('Update Span Data', id='spanloss-button'),
         style={'display': 'inline-block', 'float': 'right'}),
     ],
     style={'margin-top': '5px'}),
@@ -329,6 +330,7 @@ def update_graph(service_path_name, status_text, n_clicks, path, G_old):
 
     if trig["prop_id"] == "spanloss-button.n_clicks":
         spans = tpce.measure_and_add_oms_spanloss()
+        spans = tpce.measure_and_add_oms_length()
         #print(json.dumps(spans, indent = 4))
     
     if G_old is not None:
@@ -676,4 +678,4 @@ if __name__ == '__main__':
     ws = websocket.WebSocketApp(ws_loc, on_message = on_message, on_error = on_error)
     ws_thread = Thread(target = ws.run_forever, daemon = True)
     ws_thread.start()
-    app.run_server(debug=True)
+    app.run_server(debug=False)
