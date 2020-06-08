@@ -12,7 +12,7 @@ def graph_from_topology(topology, G_old = None):
     
     G = nx.DiGraph()
    
-    for node in topology["node"]:
+    for node in sorted(topology["node"], key = lambda x: x["node-id"]):
         G.add_node(node["node-id"], node_info = node)
 
     for link in topology["ietf-network-topology:link"]:
