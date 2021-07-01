@@ -67,6 +67,16 @@ class Controller():
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()["nodes"][0]
         
+    def get_geolocation(self):
+        url = f"{self.baseurl}/config/transportpce-geolocation:geonetwork"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()["geonetwork"]["geonodes"]
+        
+    def get_geolocation_node(self, node_id):
+        url = f"{self.baseurl}/config/transportpce-geolocation:geonetwork/geonodes/{node_id}"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()["geonodes"][0]
+        
     def get_network(self):
         url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-network"
         response = requests.get(url, headers=self.headers, auth=self.auth)
@@ -197,6 +207,18 @@ class Controller():
     def put_topology(self, topology):
         url = f"{self.baseurl}/config/ietf-network:networks/network/openroadm-topology"
         response = requests.put(url, data=json.dumps(topology), headers=self.headers, auth=self.auth)
+        return response
+        
+    # upload portmapping
+    def put_portmapping(self, portmapping):
+        url = f"{self.baseurl}/config/transportpce-portmapping:network"
+        response = requests.put(url, data=json.dumps(portmapping), headers=self.headers, auth=self.auth)
+        return response
+        
+    # upload geolocation
+    def put_geolocation(self, geolocation):
+        url = f"{self.baseurl}/config/transportpce-geolocation:geonetwork"
+        response = requests.put(url, data=json.dumps(geolocation), headers=self.headers, auth=self.auth)
         return response
         
     # limit available wavelengths for an srg (useful e.g. for AWGs):

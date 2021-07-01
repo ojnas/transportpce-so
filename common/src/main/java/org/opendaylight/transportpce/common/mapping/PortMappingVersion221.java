@@ -28,6 +28,13 @@ import org.opendaylight.transportpce.common.Timeouts;
 import org.opendaylight.transportpce.common.device.DeviceTransactionManager;
 import org.opendaylight.transportpce.common.openroadminterfaces.OpenRoadmInterfaceException;
 import org.opendaylight.transportpce.common.openroadminterfaces.OpenRoadmInterfaces;
+import org.opendaylight.yang.gen.v1.http.org.opendaylight.transportpce.geolocation.rev210701.Geonetwork;
+import org.opendaylight.yang.gen.v1.http.org.opendaylight.transportpce.geolocation.rev210701.GeonetworkBuilder;
+import org.opendaylight.yang.gen.v1.http.org.opendaylight.transportpce.geolocation.rev210701.geonetwork.Geonodes;
+import org.opendaylight.yang.gen.v1.http.org.opendaylight.transportpce.geolocation.rev210701.geonetwork.GeonodesBuilder;
+import org.opendaylight.yang.gen.v1.http.org.opendaylight.transportpce.geolocation.rev210701.geonetwork.GeonodesKey;
+import org.opendaylight.yang.gen.v1.http.org.opendaylight.transportpce.geolocation.rev210701.geonetwork.geonodes.GeoLocation;
+import org.opendaylight.yang.gen.v1.http.org.opendaylight.transportpce.geolocation.rev210701.geonetwork.geonodes.GeoLocationBuilder;
 import org.opendaylight.yang.gen.v1.http.org.opendaylight.transportpce.portmapping.rev190702.Network;
 import org.opendaylight.yang.gen.v1.http.org.opendaylight.transportpce.portmapping.rev190702.NetworkBuilder;
 import org.opendaylight.yang.gen.v1.http.org.opendaylight.transportpce.portmapping.rev190702.network.Nodes;
@@ -93,6 +100,7 @@ public class PortMappingVersion221 {
             .OPERATIONAL, infoIID, Timeouts.DEVICE_READ_TIMEOUT, Timeouts.DEVICE_READ_TIMEOUT_UNIT);
         Info deviceInfo;
         NodeInfo nodeInfo;
+        GeoLocation geoLocation;
         if (deviceInfoOptional.isPresent()) {
             deviceInfo = deviceInfoOptional.get();
             nodeInfo = createNodeInfo(deviceInfo);
@@ -100,6 +108,10 @@ public class PortMappingVersion221 {
                 return false;
             } else {
                 postPortMapping(nodeId, nodeInfo, null, null);
+            }
+            geoLocation = createGeoLocation(deviceInfo);
+            if (geoLocation != null) {
+                postGeoLocation(nodeId, geoLocation);
             }
         } else {
             LOG.warn("Device info subtree is absent for {}", nodeId);
@@ -596,6 +608,34 @@ public class PortMappingVersion221 {
         }
     }
 
+    private boolean postGeoLocation(String nodeId, GeoLocation geoLocation) {
+        GeonodesBuilder geonodesBldr = new GeonodesBuilder();
+        geonodesBldr.withKey(new GeonodesKey(nodeId)).setNodeId(nodeId);
+        if (geoLocation != null) {
+            geonodesBldr.setGeoLocation(geoLocation);
+        }
+
+        List<Geonodes> geonodesList = new ArrayList<>();
+        geonodesList.add(geonodesBldr.build());
+
+        GeonetworkBuilder nwBldr = new GeonetworkBuilder();
+        nwBldr.setGeonodes(geonodesList);
+
+        final WriteTransaction writeTransaction = dataBroker.newWriteOnlyTransaction();
+        InstanceIdentifier<Geonetwork> nodesIID = InstanceIdentifier.builder(Geonetwork.class).build();
+        Geonetwork network = nwBldr.build();
+        writeTransaction.merge(LogicalDatastoreType.CONFIGURATION, nodesIID, network);
+        FluentFuture<? extends @NonNull CommitInfo> commit = writeTransaction.commit();
+        try {
+            commit.get();
+            return true;
+
+        } catch (InterruptedException | ExecutionException e) {
+            LOG.warn("Failed to post {}", network, e);
+            return false;
+        }
+    }
+
     private CpToDegree createCpToDegreeObject(String circuitPackName, String degreeNumber, String nodeId,
         Map<String, String> interfaceList) {
         String interfaceName = null;
@@ -821,6 +861,17 @@ public class PortMappingVersion221 {
             return null;
         }
         return nodeInfoBldr.build();
+    }
+    
+    private GeoLocation createGeoLocation(Info deviceInfo) {
+        GeoLocationBuilder geoLocationBldr = new GeoLocationBuilder();
+        if (deviceInfo.getGeoLocation() != null) {
+            geoLocationBldr.setLatitude(deviceInfo.getGeoLocation().getLatitude())
+                .setLongitude(deviceInfo.getGeoLocation().getLongitude());
+        } else {
+            return null;
+        }
+        return geoLocationBldr.build();
     }
 
 }
