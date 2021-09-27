@@ -97,6 +97,13 @@ and is available at http://www.eclipse.org/legal/epl-v10.html INTERNAL
       <classifier>features</classifier>
       <type>xml</type>
     </dependency>
+    <dependency>
+      <groupId>org.opendaylight.daexim</groupId>
+      <artifactId>odl-daexim-all</artifactId>
+      <version>1.6.2</version>
+      <classifier>features</classifier>
+      <type>xml</type>
+    </dependency>
   </dependencies>
 
 <!-- skipping test since this is an umbrella project / folder -->

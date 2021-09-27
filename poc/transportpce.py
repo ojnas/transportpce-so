@@ -23,6 +23,33 @@ class Controller():
                     "netconf-node-topology:pass-through": {}}]}
         requests.put(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
         
+    # import/export datastores:
+    def export_datastores(self):
+        url = f"{self.baseurl}/operations/data-export-import:schedule-export"
+        data = {
+                   "input": {
+                     "data-export-import:run-at": 1,
+                     "data-export-import:split-by-module": True
+                   }
+                }
+        response = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
+        return response.json()
+        
+    def import_datastores(self):
+        url = f"{self.baseurl}/operations/data-export-import:immediate-import"
+        data = {
+                   "input": {
+                   }
+                }
+        response = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth)
+        return response.json()
+        
+    def restore_network_from_file(self, filename):
+        url = f"{self.baseurl}/config/ietf-network:networks"
+        with open(filename) as f:
+            response = requests.put(url, data=f.read(), headers=self.headers, auth=self.auth)
+        return response
+    
     # some useful getters:    
     def get_ocm_data(self, node_id, deg_nbr, amp):
         url = (f"{self.baseurl}/operational/network-topology:network-topology/topology/topology-netconf/node/{node_id}/"
