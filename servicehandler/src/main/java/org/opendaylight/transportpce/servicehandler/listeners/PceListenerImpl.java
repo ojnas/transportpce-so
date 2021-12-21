@@ -108,13 +108,16 @@ public class PceListenerImpl implements TransportpcePceListener {
                                 setInput(null);
                             } else {
                                 LOG.warn("service-feasibility-check RPC ");
+                                setInput(null);
                             }
                         } else {
                             LOG.error("'PathDescription' parameter is null ");
+                            setInput(null);
                             return;
                         }
                     } else if (servicePathRpcResult.getStatus() == RpcStatusEx.Failed) {
                         LOG.error("PCE path computation failed !");
+                        setInput(null);
                         return;
                     }
                     break;
