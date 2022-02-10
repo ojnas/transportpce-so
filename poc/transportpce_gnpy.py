@@ -5,7 +5,7 @@ from gnpy.core.info import create_input_spectral_information
 from collections import namedtuple
 from math import log10
 
-def calculate_gsnr(path, topology, version="so"):
+def calculate_gsnr(path, topology, spacing=100e9, baud_rate=32e9, tx_osnr=37, version="so"):
 
     links = {l["link-id"]: l for l in topology["ietf-network-topology:link"]}
     
@@ -17,10 +17,10 @@ def calculate_gsnr(path, topology, version="so"):
     
     f_min = 192e12
     f_max = 196e12
-    spacing = 100e9
+    #spacing = 100e9
     roll_off = 0.15
-    baud_rate = 32e9
-    tx_osnr = 37
+    #baud_rate = 32e9
+    #tx_osnr = 37
     
     fiber_types = {
                     "smf": {"dispersion": 16.7e-06, "gamma": 1.27e-3},
@@ -62,17 +62,17 @@ def calculate_gsnr(path, topology, version="so"):
     Model_fg = namedtuple('Model_fg', 'nf0')
     
     if version == "so":
-        power_in = -19.94
+        power_in = -18.8
         
         def nf_vs_pin_express(power_in):
-            # p = [-2.68906094e-02, -4.95234765e-01,  2.94859959e+01]
-            return Model_fg(0.02689*power_in*power_in + 1.4952*power_in + 28.4543)
+            # Incr OSNR = -0.0007336 Pin^3 -0.07315 Pin^2 -1.4768113 Pin + 23.865915
+            return Model_fg(0.0007336*power_in**3 + 0.07315*power_in**2 + 2.4768113*power_in + 34.134085)
             
         def nf_vs_pin_drop(power_in):
-            return Model_fg(7.0)
+            return Model_fg(5.5)
 
         def p_vs_loss(loss):
-            return min(loss - 13.5, 1.2)
+            return min(loss - 18.8, 3.2)
         
     else:
         power_in = -22.44
@@ -127,8 +127,8 @@ def calculate_gsnr(path, topology, version="so"):
         power_out = p_vs_loss(loss)        
         edfa_operational["gain_target"] = power_out - power_in
         
-        amp = Edfa(uid = "node_" + str(i+1), params = edfa_params, operational = edfa_operational)
-        fiber = Fiber(uid = "fiber_" + str(i+1), params = fiber_params)
+        amp = Edfa(uid = "node_" + str(i), params = edfa_params, operational = edfa_operational)
+        fiber = Fiber(uid = "fiber_" + str(i), params = fiber_params)
         
         si = fiber(amp(si))
         power_in = power_out - loss
