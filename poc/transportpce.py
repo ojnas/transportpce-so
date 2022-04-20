@@ -146,7 +146,21 @@ class Controller():
         url = f"{self.baseurl}/streams/stream/{stream_name}?odl-leaf-nodes-only=true"
         response = requests.get(url, headers=self.headers, auth=self.auth)
         return response.json()
-        
+    
+    # subscribe to notifications on changes of openroadm topology:
+    def subscribe_topology_change(self):
+        url = f"{self.baseurl}/operations/sal-remote:create-data-change-event-subscription"
+        path = f"/ietf-network:networks/ietf-network:network[ietf-network:network-id='openroadm-topology']/ietf-network:network-id"
+        data = {"input": {
+                    "path": path,
+                    "sal-remote-augment:datastore": "CONFIGURATION",
+                    "sal-remote-augment:scope": "BASE",
+                    "sal-remote-augment:notification-output-type": "JSON"}}
+        stream_name = requests.post(url, data=json.dumps(data), headers=self.headers, auth=self.auth).json()["output"]["stream-name"]
+        url = f"{self.baseurl}/streams/stream/{stream_name}?odl-leaf-nodes-only=true"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        return response.json()
+    
     # subscribe to notifications from PCE:
     def subscribe_pce_result(self):
         url = f"{self.baseurl}/operations/sal-remote:create-notification-stream"
